@@ -2,7 +2,15 @@ import { vi } from 'vitest';
 
 export class App {
     workspace = {
-        on: vi.fn(),
+        on: vi.fn((name: string, callback: Function) => {
+            // Stocker le callback pour pouvoir l'appeler via trigger
+            this.workspace.trigger = vi.fn((eventName: string, ...args: any[]) => {
+                if (eventName === name) {
+                    return callback(...args);
+                }
+            });
+            return callback;
+        }),
         trigger: vi.fn(),
         activeLeaf: null,
         leftSplit: null,
@@ -16,15 +24,35 @@ export class App {
 export class Plugin {
     app: App;
     manifest: any;
-    loadData: () => Promise<any>;
-    saveData: (data: any) => Promise<void>;
 
     constructor(app: App, manifest: any) {
         this.app = app;
         this.manifest = manifest;
-        this.loadData = vi.fn().mockResolvedValue({});
-        this.saveData = vi.fn().mockResolvedValue(undefined);
     }
+
+    // Méthodes de base de Plugin
+    loadData = vi.fn().mockResolvedValue({});
+    saveData = vi.fn().mockResolvedValue(undefined);
+    addSettingTab = vi.fn();
+    registerEvent = vi.fn();
+    registerInterval = vi.fn();
+    registerDomEvent = vi.fn();
+    registerMarkdownPostProcessor = vi.fn();
+    registerMarkdownCodeBlockProcessor = vi.fn();
+    registerCodeMirror = vi.fn();
+    registerEditorExtension = vi.fn();
+    registerExtensions = vi.fn();
+    registerView = vi.fn();
+    registerViewType = vi.fn();
+    registerObsidianProtocolHandler = vi.fn();
+    registerRibbonExtension = vi.fn();
+    registerGlobalCommand = vi.fn();
+    registerFileExplorer = vi.fn();
+    registerFileMenu = vi.fn();
+    registerFilesystem = vi.fn();
+    registerSearch = vi.fn();
+    registerHoverLinkSource = vi.fn();
+    registerWorkspaceDropHandler = vi.fn();
 }
 
 export class PluginSettingTab {
