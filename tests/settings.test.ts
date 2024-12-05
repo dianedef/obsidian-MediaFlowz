@@ -1,7 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import MediaFlowz from '../src/main';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { App, Notice, Plugin } from 'obsidian';
+import MediaFlowz from '../src/main';
 import { DEFAULT_SETTINGS } from '../src/core/types/settings';
+import { getTranslation } from '../src/i18n/translations';
+import { EventBusService } from '../src/core/services/EventBusService';
+import { EventName } from '../src/core/types/events';
 import manifest from '../manifest.json';
 
 // Mock CloudinarySettingTab
@@ -25,7 +28,8 @@ vi.mock('obsidian', () => {
             rightSplit: null,
             rootSplit: null,
             floatingSplit: null,
-            containerEl: document.createElement('div')
+            containerEl: document.createElement('div'),
+            _events: {}
         }
     };
 
@@ -44,130 +48,164 @@ vi.mock('obsidian', () => {
         App: vi.fn(() => mockApp),
         Plugin: MockPlugin,
         Notice: vi.fn(),
-        PluginSettingTab: vi.fn()
+        PluginSettingTab: vi.fn(),
+        moment: {
+            locale: () => 'fr'
+        }
+    };
+});
+
+// Mock EventBusService
+vi.mock('../src/core/services/EventBusService', () => {
+    const mockEventBus = {
+        on: vi.fn(),
+        emit: vi.fn(),
+        getInstance: vi.fn()
+    };
+    return {
+        EventBusService: {
+            getInstance: () => mockEventBus
+        }
     };
 });
 
 describe('MediaFlowz Plugin', () => {
     let app: App;
     let plugin: MediaFlowz;
-    let pasteCallback: Function;
+    let eventBus: ReturnType<typeof EventBusService.getInstance>;
 
     beforeEach(async () => {
-        // Reset all mocks
         vi.clearAllMocks();
-
-        // Setup app and plugin
         app = new App();
         plugin = new MediaFlowz(app, manifest);
-
-        // Initialize plugin
+        eventBus = EventBusService.getInstance();
         await plugin.onload();
-
-        // Get the paste callback
-        const workspaceOnMock = vi.mocked(app.workspace.on);
-        const onCall = workspaceOnMock.mock.calls.find(call => call[0] === 'editor-paste');
-        pasteCallback = onCall?.[1];
-        expect(pasteCallback).toBeDefined();
     });
 
     describe('Settings Management', () => {
-        it('should initialize with default settings', async () => {
+        it('should load default settings', async () => {
             expect(plugin.settings).toEqual(DEFAULT_SETTINGS);
         });
 
-        it('should save settings correctly', async () => {
-            const newSettings = {
-                ...DEFAULT_SETTINGS,
-                apiKey: 'test-key',
-                cloudName: 'test-cloud'
-            };
+        it('should save settings', async () => {
+            const newSettings = { ...DEFAULT_SETTINGS, cloudName: 'test-cloud' };
             plugin.settings = newSettings;
             await plugin.saveSettings();
-            
             expect(plugin.saveData).toHaveBeenCalledWith(newSettings);
         });
     });
 
     describe('Translation System', () => {
         it('should return correct translation for existing key', () => {
-            plugin.settings = { ...DEFAULT_SETTINGS, language: 'fr' };
-            const translation = plugin.getTranslation('notices.mediaPasted');
+            const translation = getTranslation('notices.mediaPasted');
             expect(translation).not.toBe('notices.mediaPasted');
             expect(typeof translation).toBe('string');
         });
 
         it('should return key for non-existing translation', () => {
-            plugin.settings = { ...DEFAULT_SETTINGS, language: 'fr' };
             const nonExistingKey = 'nonexistent.key';
-            const translation = plugin.getTranslation(nonExistingKey);
+            const translation = getTranslation(nonExistingKey);
             expect(translation).toBe(nonExistingKey);
+        });
+
+        it('should handle nested translation keys correctly', () => {
+            const translation = getTranslation('notices.mediaPasted');
+            expect(translation).not.toBe('notices.mediaPasted');
+            expect(typeof translation).toBe('string');
         });
     });
 
     describe('Event Handling', () => {
-        it('should handle media paste events', async () => {
-            // Create a mock file
-            const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
-            
-            // Create a FileList-like object
-            const mockFileList = {
-                0: mockFile,
-                length: 1,
-                item: (index: number) => index === 0 ? mockFile : null,
-                [Symbol.iterator]: function* () {
-                    yield mockFile;
-                }
-            };
+        let pasteCallback: (evt: ClipboardEvent) => void;
 
-            // Create the clipboard event
+        beforeEach(() => {
+            // @ts-ignore - Accès à la propriété privée pour les tests
+            const events = app.workspace._events;
+            const onCall = vi.mocked(app.workspace.on).mock.calls.find(call => call[0] === 'editor-paste');
+            pasteCallback = onCall?.[1];
+            expect(pasteCallback).toBeDefined();
+        });
+
+        it('should handle media paste events', async () => {
+            const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
             const mockClipboardEvent = new ClipboardEvent('paste', {
                 clipboardData: new DataTransfer()
             });
-
-            // Mock the files property
+            
             Object.defineProperty(mockClipboardEvent.clipboardData, 'files', {
-                value: mockFileList,
+                value: [mockFile],
                 configurable: true
             });
 
-            // Call the paste callback directly
             await pasteCallback(mockClipboardEvent);
 
-            // Verify that Notice was called
-            expect(vi.mocked(Notice)).toHaveBeenCalled();
+            expect(eventBus.emit).toHaveBeenCalledWith(
+                EventName.MEDIA_PASTED,
+                expect.objectContaining({
+                    files: expect.any(Object)
+                })
+            );
+        });
+
+        it('should handle video paste events', async () => {
+            const mockFile = new File([''], 'test.mp4', { type: 'video/mp4' });
+            const mockClipboardEvent = new ClipboardEvent('paste', {
+                clipboardData: new DataTransfer()
+            });
+            
+            Object.defineProperty(mockClipboardEvent.clipboardData, 'files', {
+                value: [mockFile],
+                configurable: true
+            });
+
+            await pasteCallback(mockClipboardEvent);
+
+            expect(eventBus.emit).toHaveBeenCalledWith(
+                EventName.MEDIA_PASTED,
+                expect.objectContaining({
+                    files: expect.any(Object)
+                })
+            );
         });
 
         it('should not handle non-media paste events', async () => {
-            // Create a mock file
             const mockFile = new File([''], 'test.txt', { type: 'text/plain' });
-            
-            // Create a FileList-like object
-            const mockFileList = {
-                0: mockFile,
-                length: 1,
-                item: (index: number) => index === 0 ? mockFile : null,
-                [Symbol.iterator]: function* () {
-                    yield mockFile;
-                }
-            };
-
-            // Create the clipboard event
             const mockClipboardEvent = new ClipboardEvent('paste', {
                 clipboardData: new DataTransfer()
             });
-
-            // Mock the files property
+            
             Object.defineProperty(mockClipboardEvent.clipboardData, 'files', {
-                value: mockFileList,
+                value: [mockFile],
                 configurable: true
             });
 
-            // Call the paste callback directly
             await pasteCallback(mockClipboardEvent);
 
-            // Verify that Notice was not called
-            expect(vi.mocked(Notice)).not.toHaveBeenCalled();
+            expect(eventBus.emit).not.toHaveBeenCalled();
+        });
+
+        it('should handle multiple files in paste event', async () => {
+            const mockFiles = [
+                new File([''], 'test1.jpg', { type: 'image/jpeg' }),
+                new File([''], 'test2.mp4', { type: 'video/mp4' })
+            ];
+            const mockClipboardEvent = new ClipboardEvent('paste', {
+                clipboardData: new DataTransfer()
+            });
+            
+            Object.defineProperty(mockClipboardEvent.clipboardData, 'files', {
+                value: mockFiles,
+                configurable: true
+            });
+
+            await pasteCallback(mockClipboardEvent);
+
+            expect(eventBus.emit).toHaveBeenCalledWith(
+                EventName.MEDIA_PASTED,
+                expect.objectContaining({
+                    files: expect.any(Object)
+                })
+            );
         });
     });
 }); 
