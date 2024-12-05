@@ -7,21 +7,11 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: ['./tests/setup.ts'],
         include: ['tests/**/*.test.ts'],
-        exclude: ['**/node_modules/**', '**/dist/**'],
-        deps: {
-            optimizer: {
-                web: {
-                    include: ['obsidian']
-                }
-            }
-        }
+        exclude: ['node_modules/**/*'],
     },
     resolve: {
         alias: {
-            'obsidian': resolve(__dirname, './src/mocks/obsidian.ts')
+            'obsidian': resolve(__dirname, './tests/__mocks__/obsidian.ts')
         }
-    },
-    json: {
-        stringify: true
     }
 }); 

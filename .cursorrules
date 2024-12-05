@@ -1,3 +1,20 @@
+Je vais expliquer la différence entre les deux dossiers de mocks et leur utilisation :
+1. tests/__mocks__/ (avec double underscore)
+C'est un dossier spécial reconnu automatiquement par Jest/Vitest
+Il sert à mocker des modules externes (npm packages)
+Quand on fait import { something } from 'package-name', Vitest va automatiquement chercher dans __mocks__/package-name.ts
+Exemple : obsidian.ts mock le package Obsidian qui est externe à notre projet
+tests/mocks/ (dossier normal)
+C'est notre dossier personnalisé
+Il contient nos propres mocks pour notre code interne
+On doit explicitement importer ces mocks
+Exemple : services/ErrorService.mock.ts mock notre propre service
+Donc :
+__mocks__ : Pour les dépendances externes (packages npm)
+mocks/ : Pour notre propre code
+C'est pour ça qu'on garde obsidian.ts dans __mocks__/ mais qu'on a déplacé nos autres mocks dans mocks/.
+
+
 PlayerView : La vue Obsidian elle-même
 ViewModeService : Gère la création/fermeture des vues et leur mode
 PlayerUI : Gère l'interface utilisateur du lecteur

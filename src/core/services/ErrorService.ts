@@ -34,15 +34,15 @@ export interface StructuredError {
  * Gère le logging, l'affichage et le reporting des erreurs.
  */
 export class ErrorService {
-    private static instance: ErrorService;
-    private eventBus: EventBusService;
+    private static instance: ErrorService | undefined;
+    private readonly eventBus: EventBusService;
 
     private constructor() {
         this.eventBus = EventBusService.getInstance();
         this.setupEventListeners();
     }
 
-    static getInstance(): ErrorService {
+    public static getInstance(): ErrorService {
         if (!ErrorService.instance) {
             ErrorService.instance = new ErrorService();
         }
@@ -137,5 +137,13 @@ export class ErrorService {
     public isConfigError(error: Error): boolean {
         return error.message.includes('not configured') || 
                error.message.includes('invalid settings');
+    }
+
+    /**
+     * Nettoie l'instance.
+     * À utiliser principalement dans les tests.
+     */
+    public static cleanup(): void {
+        ErrorService.instance = undefined;
     }
 } 

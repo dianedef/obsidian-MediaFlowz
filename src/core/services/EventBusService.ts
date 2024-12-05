@@ -12,7 +12,7 @@ import { EventName, EventMap, EventCallback } from '../types/events';
  * });
  */
 export class EventBusService {
-    private static instance: EventBusService;
+    private static instance: EventBusService | undefined;
     private listeners: Map<EventName, Set<EventCallback<any>>>;
 
     private constructor() {
@@ -25,7 +25,7 @@ export class EventBusService {
      * 
      * @returns {EventBusService} L'instance unique du service
      */
-    static getInstance(): EventBusService {
+    public static getInstance(): EventBusService {
         if (!EventBusService.instance) {
             EventBusService.instance = new EventBusService();
         }
@@ -119,5 +119,16 @@ export class EventBusService {
      */
     getListenerCount(event: EventName): number {
         return this.listeners.get(event)?.size ?? 0;
+    }
+
+    /**
+     * Nettoie l'instance et les event listeners.
+     * À utiliser principalement dans les tests.
+     */
+    public static cleanup(): void {
+        if (EventBusService.instance) {
+            EventBusService.instance.listeners.clear();
+            EventBusService.instance = undefined;
+        }
     }
 } 

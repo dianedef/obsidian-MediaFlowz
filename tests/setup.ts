@@ -1,49 +1,31 @@
-import { beforeEach } from 'vitest';
-import { vi } from 'vitest';
+import { vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { setupServer } from 'msw/node';
+import { handlers } from './mocks/api/cloudinary.handlers';
+import { mockErrorServiceFactory } from './mocks/services/ErrorService.mock';
+import { mockEventBusServiceFactory } from './mocks/services/EventBusService.mock';
 
-// Mock des fonctionnalités d'Obsidian
-vi.mock('obsidian', () => {
-    const mockApp = {
-        workspace: {
-            on: vi.fn(),
-            trigger: vi.fn(),
-            activeLeaf: null,
-            leftSplit: null,
-            rightSplit: null,
-            rootSplit: null,
-            floatingSplit: null,
-            containerEl: document.createElement('div')
-        }
-    };
+// Setup MSW
+export const server = setupServer(...handlers);
 
-    class MockPlugin {
-        app: any;
-        manifest: any;
-        loadData: () => Promise<any>;
-        saveData: (data: any) => Promise<void>;
+// Démarrer le serveur MSW avant tous les tests
+beforeAll(() => server.listen({ 
+    onUnhandledRequest: 'bypass' // Permet aux requêtes non gérées de passer
+}));
 
-        constructor(app: any, manifest: any) {
-            this.app = app;
-            this.manifest = manifest;
-            this.loadData = vi.fn().mockResolvedValue({});
-            this.saveData = vi.fn().mockResolvedValue(undefined);
-        }
-    }
-
-    return {
-        App: vi.fn(() => mockApp),
-        Plugin: MockPlugin,
-        PluginSettingTab: vi.fn(),
-        Setting: vi.fn(() => ({
-            setName: vi.fn().mockReturnThis(),
-            setDesc: vi.fn().mockReturnThis(),
-            addText: vi.fn().mockReturnThis()
-        })),
-        Notice: vi.fn()
-    };
+// Reset les handlers après chaque test
+afterEach(() => {
+    server.resetHandlers();
+    vi.clearAllMocks();
 });
 
-// Mock des classes du DOM
+// Fermer le serveur après tous les tests
+afterAll(() => server.close());
+
+// Mock des services
+vi.mock('../src/core/services/ErrorService', () => mockErrorServiceFactory());
+vi.mock('../src/core/services/EventBusService', () => mockEventBusServiceFactory());
+
+// Mock des classes DOM
 class MockDataTransfer implements DataTransfer {
     dropEffect: 'none' | 'copy' | 'link' | 'move' = 'none';
     effectAllowed: 'none' | 'copy' | 'copyLink' | 'copyMove' | 'link' | 'linkMove' | 'move' | 'all' | 'uninitialized' = 'none';
