@@ -3,6 +3,7 @@ import { setupServer } from 'msw/node';
 import { handlers } from './mocks/api/cloudinary.handlers';
 import { mockErrorServiceFactory } from './mocks/services/ErrorService.mock';
 import { mockEventBusServiceFactory } from './mocks/services/EventBusService.mock';
+import { mockCommandServiceFactory } from './mocks/services/CommandService.mock';
 
 // Setup MSW
 export const server = setupServer(...handlers);
@@ -24,6 +25,7 @@ afterAll(() => server.close());
 // Mock des services
 vi.mock('../src/core/services/ErrorService', () => mockErrorServiceFactory());
 vi.mock('../src/core/services/EventBusService', () => mockEventBusServiceFactory());
+vi.mock('../src/core/services/CommandService', () => mockCommandServiceFactory());
 
 // Mock des classes DOM
 class MockDataTransfer implements DataTransfer {

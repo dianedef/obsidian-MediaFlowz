@@ -61,12 +61,12 @@ export default class MediaFlowz extends Plugin {
 
    async loadSettings() {
       this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-      // Émettre l'événement de mise à jour des settings
       this.eventBus?.emit(EventName.SETTINGS_UPDATED, { settings: this.settings });
    }
 
    async saveSettings() {
       await this.saveData(this.settings);
-      this.eventBus.emit(EventName.SETTINGS_UPDATED, { settings: this.settings });
+      this.eventBus.emit(EventName.SETTINGS_SAVED, { settings: this.settings });
+      new Notice(getTranslation('notices.settingsSaved'));
    }
 } 

@@ -29,7 +29,10 @@ export enum EventName {
     /** Demande d'insertion d'un média dans l'éditeur */
     EDITOR_INSERT_MEDIA = 'editor:insert:media',
     /** Confirmation de l'insertion d'un média */
-    EDITOR_MEDIA_INSERTED = 'editor:media:inserted'
+    EDITOR_MEDIA_INSERTED = 'editor:media:inserted',
+
+    /** Émis quand les paramètres sont sauvegardés */
+    SETTINGS_SAVED = 'settings:saved'
 }
 
 /**
@@ -103,6 +106,12 @@ export interface EventMap {
         editor: Editor;
         /** Nom du fichier inséré */
         fileName: string;
+    };
+
+    /** Données émises lors de la sauvegarde des paramètres */
+    [EventName.SETTINGS_SAVED]: {
+        /** Les nouveaux paramètres */
+        settings: IPluginSettings;
     };
 }
 

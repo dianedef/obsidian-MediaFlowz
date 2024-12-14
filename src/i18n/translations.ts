@@ -17,6 +17,7 @@ export interface Translations {
         mediaUploaded: string;
         mediaUploadError: string;
         mediaInserted: string;
+        settingsSaved: string;
     };
     errors: {
         notConfigured: string;
@@ -44,7 +45,8 @@ const fr: Translations = {
         mediaPasted: '📎 Média détecté, envoi vers Cloudinary...',
         mediaUploaded: '✅ {fileName} uploadé avec succès',
         mediaUploadError: '❌ Erreur lors de l\'upload de {fileName}: {error}',
-        mediaInserted: '📝 {fileName} inséré dans la note'
+        mediaInserted: '📝 {fileName} inséré dans la note',
+        settingsSaved: '⚙️ Paramètres sauvegardés'
     },
     errors: {
         notConfigured: 'Cloudinary n\'est pas configuré',
@@ -72,7 +74,8 @@ const en: Translations = {
         mediaPasted: '📎 Media detected, uploading to Cloudinary...',
         mediaUploaded: '✅ {fileName} uploaded successfully',
         mediaUploadError: '❌ Error uploading {fileName}: {error}',
-        mediaInserted: '📝 {fileName} inserted in note'
+        mediaInserted: '📝 {fileName} inserted in note',
+        settingsSaved: '⚙️ Settings saved'
     },
     errors: {
         notConfigured: 'Cloudinary is not configured',
