@@ -1,44 +1,102 @@
 /**
- * Interface définissant les paramètres de configuration Cloudinary.
- * Contient toutes les informations nécessaires pour se connecter à l'API.
- * 
- * @interface
- * @see {@link https://cloudinary.com/documentation/upload_images#upload_options|Documentation Cloudinary}
+ * Types pour les paramètres de configuration des différents services.
+ * Chaque service a ses propres paramètres spécifiques.
+ */
+
+/**
+ * Paramètres Cloudinary
+ * @see {@link https://cloudinary.com/documentation/upload_images#upload_options}
  */
 export interface ICloudinarySettings {
-    /** Clé API fournie par Cloudinary */
+    /** Clé API Cloudinary */
     apiKey: string;
-
-    /** Secret API fourni par Cloudinary */
+    /** Secret API Cloudinary */
     apiSecret: string;
-
-    /** Nom de votre cloud Cloudinary */
+    /** Nom du cloud Cloudinary */
     cloudName: string;
-
-    /**
-     * Preset d'upload non signé (optionnel).
-     * Si fourni, permet d'utiliser l'API d'upload non signé.
-     * @see {@link https://cloudinary.com/documentation/upload_presets|Documentation des presets}
-     */
+    /** Preset d'upload non signé (optionnel) */
     uploadPreset?: string;
 }
 
 /**
- * Type principal des paramètres du plugin.
- * Actuellement identique à ICloudinarySettings car nous n'avons
- * pas d'autres paramètres, mais peut être étendu à l'avenir.
+ * Paramètres TwicPics
+ * @see {@link https://www.twicpics.com/docs/api/upload}
  */
-export type IPluginSettings = ICloudinarySettings;
+export interface ITwicPicsSettings {
+    /** Domaine TwicPics (ex: your-workspace.twicpics.com) */
+    domain: string;
+    /** Clé API TwicPics */
+    apiKey: string;
+    /** Chemin TwicPics (optionnel) */
+    path?: string;
+}
 
 /**
- * Paramètres par défaut du plugin.
- * Utilisés lors de la première initialisation ou en cas de reset.
- * 
- * @constant
- * @type {IPluginSettings}
+ * Paramètres Cloudflare
+ * @see {@link https://developers.cloudflare.com/images}
+ * @see {@link https://developers.cloudflare.com/stream}
+ */
+export interface ICloudflareSettings {
+    /** ID du compte Cloudflare */
+    accountId: string;
+    /** Token pour Cloudflare Images */
+    imagesToken: string;
+    /** Token pour Cloudflare Stream (optionnel) */
+    streamToken?: string;
+    /** Variant par défaut pour les images */
+    defaultVariant?: string;
+    /** Domaine personnalisé */
+    customDomain?: string;
+    /** Nom du bucket Cloudflare R2 */
+    bucketName?: string;
+    /** ID de la clé d'accès Cloudflare R2 */
+    r2AccessKeyId?: string;
+    /** Secret de la clé d'accès Cloudflare R2 */
+    r2SecretAccessKey?: string;
+}
+
+/**
+ * Type des services supportés
+ */
+export type SupportedService = 'cloudinary' | 'twicpics' | 'cloudflare';
+
+/**
+ * Configuration globale du plugin
+ */
+export interface IPluginSettings {
+    /** Service actif */
+    service: SupportedService;
+    /** Configuration Cloudinary */
+    cloudinary?: ICloudinarySettings;
+    /** Configuration TwicPics */
+    twicpics?: ITwicPicsSettings;
+    /** Configuration Cloudflare */
+    cloudflare?: ICloudflareSettings;
+    /** Liste des dossiers à ignorer */
+    ignoredFolders: string[];
+}
+
+/**
+ * Paramètres par défaut
  */
 export const DEFAULT_SETTINGS: IPluginSettings = {
-    apiKey: '',
-    apiSecret: '',
-    cloudName: ''
+    service: 'cloudinary',
+    cloudinary: {
+        apiKey: '',
+        apiSecret: '',
+        cloudName: ''
+    },
+    twicpics: {
+        domain: '',
+        apiKey: '',
+        path: ''
+    },
+    cloudflare: {
+        accountId: '',
+        imagesToken: '',
+        bucketName: '',
+        r2AccessKeyId: '',
+        r2SecretAccessKey: ''
+    },
+    ignoredFolders: []
 }; 

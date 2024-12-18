@@ -32,7 +32,12 @@ export enum EventName {
     EDITOR_MEDIA_INSERTED = 'editor:media:inserted',
 
     /** Émis quand les paramètres sont sauvegardés */
-    SETTINGS_SAVED = 'settings:saved'
+    SETTINGS_SAVED = 'settings:saved',
+
+    MEDIA_URL_PASTED = 'media:url:pasted',
+    MEDIA_DROPPED = 'media:dropped',
+
+    FRONTMATTER_UPDATED = 'frontmatter:updated'
 }
 
 /**
@@ -112,6 +117,20 @@ export interface EventMap {
     [EventName.SETTINGS_SAVED]: {
         /** Les nouveaux paramètres */
         settings: IPluginSettings;
+    };
+
+    [EventName.MEDIA_URL_PASTED]: {
+        url: string;
+    };
+    
+    [EventName.MEDIA_DROPPED]: {
+        files: File[];
+    };
+
+    [EventName.FRONTMATTER_UPDATED]: {
+        file: TFile;
+        oldPrefix?: string;
+        newPrefix: string;
     };
 }
 

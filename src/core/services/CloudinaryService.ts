@@ -1,40 +1,35 @@
-import { EventBusService } from './EventBusService';
-import { ErrorService, ErrorType } from './ErrorService';
-import { EventName } from '../types/events';
+import { AbstractMediaUploadService } from './AbstractMediaUploadService';
 import { ICloudinarySettings } from '../types/settings';
 import { ofetch, createFetch, FetchError, $Fetch, CreateFetchOptions } from 'ofetch';
+import { IUploadResponse, IUploadOptions } from './interfaces/IMediaUploadService';
+import { EventBusService } from './EventBusService';
+import { EventName } from '../types/events';
 
 /**
  * Service gérant les interactions avec l'API Cloudinary.
- * Utilise ofetch pour des requêtes HTTP robustes avec retry automatique.
+ * Gère les uploads et transformations d'images et vidéos.
  * 
  * Fonctionnalités :
  * - Upload de fichiers médias (images et vidéos)
- * - Gestion des erreurs réseau et d'upload
- * - Retry automatique en cas d'échec
- * - Signature des requêtes pour l'authentification
- * 
- * @example
- * const cloudinaryService = CloudinaryService.getInstance();
+ * - Transformations automatiques
+ * - Gestion des erreurs réseau
+ * - Retry automatique
+ * - Signature des requêtes
  */
-export class CloudinaryService {
+export class CloudinaryService extends AbstractMediaUploadService {
     private static instance: CloudinaryService;
-    private readonly eventBus: EventBusService;
-    private readonly errorService: ErrorService;
     private settings?: ICloudinarySettings;
     private cloudinaryFetch?: $Fetch;
+    private boundHandleSettingsUpdate: (settings: any) => void;
+    private boundHandleMediaUpload: (file: File) => void;
 
     private constructor() {
-        this.eventBus = EventBusService.getInstance();
-        this.errorService = ErrorService.getInstance();
-        
-        this.setupEventListeners();
+        super();
+        this.boundHandleSettingsUpdate = this.handleSettingsUpdate.bind(this);
+        this.boundHandleMediaUpload = this.handleMediaUpload.bind(this);
+        this.initializeEventListeners();
     }
 
-    /**
-     * Retourne l'instance unique du service.
-     * Crée l'instance si elle n'existe pas encore.
-     */
     public static getInstance(): CloudinaryService {
         if (!CloudinaryService.instance) {
             CloudinaryService.instance = new CloudinaryService();
@@ -42,28 +37,30 @@ export class CloudinaryService {
         return CloudinaryService.instance;
     }
 
-    /**
-     * Nettoie les event listeners du service.
-     * À appeler avant de réinitialiser l'instance.
-     */
-    public static cleanup(): void {
-        if (CloudinaryService.instance) {
-            const eventBus = EventBusService.getInstance();
-            eventBus.off(EventName.SETTINGS_UPDATED, CloudinaryService.instance.boundHandleSettingsUpdate);
-            eventBus.off(EventName.MEDIA_PASTED, CloudinaryService.instance.boundHandleMediaUpload);
-            CloudinaryService.instance = undefined;
-        }
+    private initializeEventListeners(): void {
+        const eventBus = EventBusService.getInstance();
+        eventBus.on(EventName.SETTINGS_UPDATED, this.boundHandleSettingsUpdate);
+        eventBus.on(EventName.MEDIA_PASTED, this.boundHandleMediaUpload);
     }
 
-    private setupEventListeners(): void {
-        this.eventBus.on(EventName.SETTINGS_UPDATED, ({ settings }) => {
-            this.settings = settings;
-            this.setupCloudinaryFetch();
-        });
+    private handleSettingsUpdate(settings: any): void {
+        this.settings = settings.cloudinary;
+        this.setupCloudinaryFetch();
+    }
 
-        this.eventBus.on(EventName.MEDIA_PASTED, async ({ files }) => {
-            await this.handleMediaUpload(files);
-        });
+    private async handleMediaUpload(file: File): Promise<void> {
+        try {
+            const response = await this.upload(file);
+            EventBusService.getInstance().emit(EventName.MEDIA_UPLOADED, {
+                url: response.url,
+                fileName: file.name
+            });
+        } catch (error) {
+            EventBusService.getInstance().emit(EventName.MEDIA_UPLOAD_ERROR, {
+                error: error instanceof Error ? error : new Error('Unknown error'),
+                fileName: file.name
+            });
+        }
     }
 
     private setupCloudinaryFetch(): void {
@@ -86,98 +83,98 @@ export class CloudinaryService {
             },
             async onRequestError({ error }) {
                 const err = error as Error;
-                throw new Error(`Network error: ${err.message}`);
+                throw new Error(`Erreur réseau: ${err.message}`);
             },
             async onResponse({ response }) {
-                const data = response._data as { secure_url?: string };
+                const data = response._data as { secure_url?: string, resource_type?: string };
                 if (!data.secure_url) {
-                    throw new Error('Invalid response format');
+                    throw new Error('Format de réponse invalide');
                 }
             },
             async onResponseError({ response }) {
-                const data = response._data as string;
-                throw new Error(`Upload failed: ${data || 'Unknown error'}`);
+                const data = response._data as { error?: { message: string } };
+                throw new Error(`Upload échoué: ${data.error?.message || 'Erreur inconnue'}`);
             }
         };
 
         this.cloudinaryFetch = createFetch(options);
     }
 
-    /**
-     * Gère l'upload des fichiers média vers Cloudinary.
-     * Utilise Promise.all pour uploader plusieurs fichiers en parallèle.
-     * 
-     * @fires EventName.MEDIA_UPLOAD_ERROR
-     * @fires EventName.MEDIA_UPLOADED
-     */
-    private async handleMediaUpload(files: FileList): Promise<void> {
+    private isVideoFile(file: File): boolean {
+        return file.type.startsWith('video/');
+    }
+
+    async upload(file: File, options?: IUploadOptions): Promise<IUploadResponse> {
         if (!this.isConfigured()) {
-            const structuredError = this.errorService.createError(
-                ErrorType.CONFIG,
-                'errors.notConfigured'
-            );
-            this.errorService.handleError(structuredError);
-            this.eventBus.emit(EventName.MEDIA_UPLOAD_ERROR, {
-                error: structuredError,
-                fileName: 'unknown'
-            });
-            return;
+            throw new Error('Configuration Cloudinary manquante');
         }
 
-        const mediaFiles = Array.from(files).filter(file => this.isMediaFile(file));
-        
+        if (!this.cloudinaryFetch) {
+            this.setupCloudinaryFetch();
+        }
+
+        const isVideo = this.isVideoFile(file);
+        const resourceType = isVideo ? 'video' : 'image';
+
         try {
-            const results = await Promise.all(
-                mediaFiles.map(file => this.uploadFile(file))
-            );
+            const formData = new FormData();
+            formData.append('file', file);
             
-            results.forEach((url, index) => {
-                this.eventBus.emit(EventName.MEDIA_UPLOADED, {
-                    url,
-                    fileName: mediaFiles[index].name
-                });
-            });
-        } catch (error) {
-            const isNetwork = this.errorService.isNetworkError(error as Error);
-            const structuredError = isNetwork
-                ? this.errorService.createError(
-                    ErrorType.NETWORK,
-                    'errors.networkError',
-                    error as Error,
-                    { fileName: mediaFiles[0].name }
-                )
-                : this.errorService.createError(
-                    ErrorType.UPLOAD,
-                    'errors.uploadFailed',
-                    error as Error,
-                    { fileName: mediaFiles[0].name }
-                );
+            if (this.settings!.uploadPreset) {
+                formData.append('upload_preset', this.settings!.uploadPreset);
+            } else {
+                const signature = await this.generateSignature(formData, this.settings!.apiSecret);
+                formData.append('signature', signature);
+            }
 
-            this.errorService.handleError(structuredError);
-            this.eventBus.emit(EventName.MEDIA_UPLOAD_ERROR, {
-                error: error as Error,
-                fileName: mediaFiles[0].name
+            // Ajouter les options de transformation si présentes
+            if (options?.transformation) {
+                formData.append('transformation', options.transformation);
+            }
+
+            if (options?.folder) {
+                formData.append('folder', options.folder);
+            }
+
+            if (options?.tags) {
+                formData.append('tags', options.tags.join(','));
+            }
+
+            const response = await this.cloudinaryFetch<{
+                secure_url: string;
+                public_id: string;
+                resource_type: string;
+                width?: number;
+                height?: number;
+                format?: string;
+                duration?: number;
+            }>(`/${resourceType}/upload`, {
+                method: 'POST',
+                body: formData
             });
+
+            return {
+                url: response.secure_url,
+                publicId: response.public_id,
+                width: response.width,
+                height: response.height,
+                format: response.format,
+                metadata: {
+                    type: resourceType,
+                    duration: response.duration
+                }
+            };
+        } catch (error) {
+            if (error instanceof Error) {
+                throw error;
+            }
+            throw new Error('Erreur d\'upload inconnue');
         }
     }
 
-    private isConfigured(): boolean {
-        return !!(this.settings?.cloudName && this.settings?.apiKey && this.settings?.apiSecret);
-    }
-
-    private isMediaFile(file: File): boolean {
-        return file.type.startsWith('image/') || file.type.startsWith('video/');
-    }
-
-    /**
-     * Upload un fichier vers Cloudinary avec retry automatique.
-     * 
-     * @throws {Error} Si l'upload échoue après les retries
-     * @throws {FetchError} Si une erreur réseau survient
-     */
-    private async uploadFile(file: File): Promise<string> {
-        if (!this.settings) {
-            throw new Error('Cloudinary settings not configured');
+    async delete(publicId: string): Promise<void> {
+        if (!this.isConfigured()) {
+            throw new Error('Configuration Cloudinary manquante');
         }
 
         if (!this.cloudinaryFetch) {
@@ -186,41 +183,38 @@ export class CloudinaryService {
 
         try {
             const formData = new FormData();
-            formData.append('file', file);
-            
-            if (this.settings.uploadPreset) {
-                formData.append('upload_preset', this.settings.uploadPreset);
-            } else {
-                const signature = await this.generateSignature(formData, this.settings.apiSecret);
+            formData.append('public_id', publicId);
+
+            if (!this.settings!.uploadPreset) {
+                const signature = await this.generateSignature(formData, this.settings!.apiSecret);
                 formData.append('signature', signature);
             }
 
-            const response = await this.cloudinaryFetch<{ secure_url: string }>('/auto/upload', {
+            await this.cloudinaryFetch('/delete', {
                 method: 'POST',
                 body: formData
             });
-
-            return response.secure_url;
         } catch (error) {
-            if (error instanceof Error && error.message.startsWith('Network error:')) {
-                throw error;
-            }
-            if (error instanceof FetchError) {
-                throw new Error(`Network error: ${error.message}`);
+            if (error instanceof Error) {
+                throw new Error(`Erreur de suppression: ${error.message}`);
             }
             throw error;
         }
     }
 
-    /**
-     * Génère une signature pour l'API Cloudinary.
-     * Utilise SHA-1 pour signer les paramètres.
-     * 
-     * @param {FormData} formData - Les données à signer
-     * @param {string} apiSecret - Le secret API Cloudinary
-     * @returns {Promise<string>} La signature générée
-     * @private
-     */
+    getUrl(publicId: string, transformation?: string): string {
+        if (!this.isConfigured()) {
+            throw new Error('Configuration Cloudinary manquante');
+        }
+
+        const baseUrl = `https://res.cloudinary.com/${this.settings!.cloudName}`;
+        if (!transformation) {
+            return `${baseUrl}/image/upload/${publicId}`;
+        }
+
+        return `${baseUrl}/image/upload/${transformation}/${publicId}`;
+    }
+
     private async generateSignature(formData: FormData, apiSecret: string): Promise<string> {
         const params = new Map<string, string>();
         formData.forEach((value, key) => {
@@ -229,20 +223,34 @@ export class CloudinaryService {
             }
         });
 
-        // Trier les paramètres par clé
         const sortedParams = Array.from(params.entries())
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([key, value]) => `${key}=${value}`)
             .join('&');
 
-        // Générer la signature SHA-1
         const encoder = new TextEncoder();
         const data = encoder.encode(sortedParams + apiSecret);
         const hashBuffer = await crypto.subtle.digest('SHA-1', data);
         
-        // Convertir en hexadécimal
         return Array.from(new Uint8Array(hashBuffer))
             .map(b => b.toString(16).padStart(2, '0'))
             .join('');
+    }
+
+    isConfigured(): boolean {
+        return !!(
+            this.settings?.cloudName && 
+            this.settings?.apiKey && 
+            (this.settings?.apiSecret || this.settings?.uploadPreset)
+        );
+    }
+
+    public static cleanup(): void {
+        if (CloudinaryService.instance) {
+            const eventBus = EventBusService.getInstance();
+            eventBus.off(EventName.SETTINGS_UPDATED, CloudinaryService.instance.boundHandleSettingsUpdate);
+            eventBus.off(EventName.MEDIA_PASTED, CloudinaryService.instance.boundHandleMediaUpload);
+            CloudinaryService.instance = undefined;
+        }
     }
 } 

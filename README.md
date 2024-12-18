@@ -27,7 +27,7 @@ A powerful Obsidian plugin that transforms YouTube videos into rich Markdown not
 
 1. In Obsidian, go to Settings > Third-party plugins
 2. Disable restricted mode
-3. Click "Browse" and search for "ObsiTubeFlowz"
+3. Click "Browse" and search for "MediaFlowz"
 4. Install the plugin
 
 ### ⚙️ Configuration
