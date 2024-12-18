@@ -23,8 +23,10 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        // Titre principal avec le nom du service actif
-        const titleText = `${getTranslation('settings.title')} - ${this.plugin.settings.service.charAt(0).toUpperCase() + this.plugin.settings.service.slice(1)}`;
+        // Titre principal
+        const titleText = this.plugin.settings.service 
+            ? `${getTranslation('settings.title')} - ${this.plugin.settings.service.charAt(0).toUpperCase() + this.plugin.settings.service.slice(1)}`
+            : getTranslation('settings.title');
         containerEl.createEl('h2', { text: titleText });
 
         // Section de sélection du service
@@ -35,16 +37,29 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
             .setName(getTranslation('settings.service'))
             .setDesc(getTranslation('settings.serviceDesc'))
             .addDropdown(dropdown => {
-                // Définir les options
+                // Ajouter une option vide
+                dropdown.addOption('', getTranslation('settings.selectService'));
                 dropdown.addOption('cloudinary', 'Cloudinary');
                 dropdown.addOption('twicpics', 'TwicPics');
                 dropdown.addOption('cloudflare', 'Cloudflare');
                 
                 // Définir la valeur actuelle
-                dropdown.setValue(this.plugin.settings.service);
+                dropdown.setValue(this.plugin.settings.service || '');
                 
                 // Gérer le changement
                 dropdown.onChange(async (value) => {
+                    if (!value) {
+                        // Si aucun service n'est sélectionné, réinitialiser les paramètres
+                        await this.updateSettings({
+                            service: undefined,
+                            cloudinary: undefined,
+                            twicpics: undefined,
+                            cloudflare: undefined
+                        });
+                        this.display();
+                        return;
+                    }
+
                     const settingsSection = containerEl.querySelector('.service-settings-section');
                     if (settingsSection) {
                         settingsSection.addClass('fade-out');
@@ -87,19 +102,21 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
             });
 
         // Section des paramètres spécifiques au service
-        const serviceSettingsSection = containerEl.createDiv('service-settings-section');
+        if (this.plugin.settings.service) {
+            const serviceSettingsSection = containerEl.createDiv('service-settings-section');
 
-        // Afficher les paramètres selon le service sélectionné
-        switch (this.plugin.settings.service) {
-            case SupportedService.CLOUDINARY:
-                this.displayCloudinarySettings(serviceSettingsSection);
-                break;
-            case SupportedService.TWICPICS:
-                this.displayTwicPicsSettings(serviceSettingsSection);
-                break;
-            case SupportedService.CLOUDFLARE:
-                this.displayCloudflareSettings(serviceSettingsSection);
-                break;
+            // Afficher les paramètres selon le service sélectionné
+            switch (this.plugin.settings.service) {
+                case SupportedService.CLOUDINARY:
+                    this.displayCloudinarySettings(serviceSettingsSection);
+                    break;
+                case SupportedService.TWICPICS:
+                    this.displayTwicPicsSettings(serviceSettingsSection);
+                    break;
+                case SupportedService.CLOUDFLARE:
+                    this.displayCloudflareSettings(serviceSettingsSection);
+                    break;
+            }
         }
 
         // Section des dossiers ignorés
@@ -157,16 +174,31 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
 
     private async updateSettings(newSettings: Partial<typeof this.plugin.settings>): Promise<void> {
         try {
-            // Fusionner les paramètres existants avec les nouveaux
+            // Ne garder que les paramètres du service actif
+            const service = newSettings.service || this.plugin.settings.service;
             const mergedSettings = {
                 ...this.plugin.settings,
                 ...newSettings,
-                // Gérer spécifiquement les paramètres de Cloudflare
-                cloudflare: {
-                    ...this.plugin.settings.cloudflare,
-                    ...(newSettings.cloudflare || {})
-                }
+                // Supprimer les paramètres des autres services
+                cloudinary: undefined,
+                twicpics: undefined,
+                cloudflare: undefined
             };
+
+            // Si un service est sélectionné, initialiser ses paramètres
+            if (service) {
+                switch (service) {
+                    case SupportedService.CLOUDINARY:
+                        mergedSettings.cloudinary = this.plugin.settings.cloudinary || {};
+                        break;
+                    case SupportedService.TWICPICS:
+                        mergedSettings.twicpics = this.plugin.settings.twicpics || {};
+                        break;
+                    case SupportedService.CLOUDFLARE:
+                        mergedSettings.cloudflare = this.plugin.settings.cloudflare || {};
+                        break;
+                }
+            }
 
             // Mettre à jour les paramètres dans le service sans validation
             await this.settingsService.updateSettings(mergedSettings, false);

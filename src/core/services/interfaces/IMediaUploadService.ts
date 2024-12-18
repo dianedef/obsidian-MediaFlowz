@@ -1,20 +1,23 @@
-export interface IUploadResponse {
-    url: string;
-    publicId?: string;
-    width?: number;
-    height?: number;
-    format?: string;
+export interface IUploadOptions {
+    variant?: string;
+    metadata?: Record<string, any>;
 }
 
-export interface IUploadOptions {
-    folder?: string;
-    transformation?: string;
-    tags?: string[];
+export interface IUploadResponse {
+    url: string;
+    publicId: string;
+    metadata?: {
+        id: string;
+        type: string;
+        playback?: any;
+        [key: string]: any;
+    };
 }
 
 export interface IMediaUploadService {
     upload(file: File, options?: IUploadOptions): Promise<IUploadResponse>;
     delete(publicId: string): Promise<void>;
-    getUrl(publicId: string, transformation?: string): string;
+    getUrl(publicId: string, variant?: string): string;
     isConfigured(): boolean;
+    handleMediaUpload(data: { files: FileList | File[] }): Promise<void>;
 } 

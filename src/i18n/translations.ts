@@ -8,6 +8,7 @@ const fr = {
     'settings.title': 'Paramètres MediaFlowz',
     'settings.service': 'Service',
     'settings.serviceDesc': 'Choisissez le service que vous souhaitez utiliser pour héberger vos médias.',
+    'settings.selectService': 'Sélectionnez un service...',
 
     // Paramètres communs
     'settings.apiKey': 'Clé API',
@@ -81,6 +82,7 @@ const en = {
     'settings.title': 'MediaFlowz Settings',
     'settings.service': 'Service',
     'settings.serviceDesc': 'Choose the service you want to use to host your media.',
+    'settings.selectService': 'Select a service...',
 
     // Common settings
     'settings.apiKey': 'API Key',
@@ -158,23 +160,17 @@ export const translations: Translations = { fr, en };
 
 export function getCurrentLocale(): 'fr' | 'en' {
     const locale = moment.locale() || 'en';
-    console.log('Current locale detected:', locale);
     return locale === 'fr' ? 'fr' : 'en';
 }
 
 export function getTranslation(key: TranslationKey): string {
     const currentLocale = getCurrentLocale();
     const lang = translations[currentLocale] ? currentLocale : 'en';
-    console.log('Translation request:', {
-        requestedKey: key,
-        detectedLocale: currentLocale,
-        usedLanguage: lang,
-        translationFound: translations[lang][key] !== undefined
-    });
     
     if (!translations[lang][key]) {
         console.warn(`Missing translation for key: ${key} in language: ${lang}`);
+        return key;
     }
     
-    return translations[lang][key] || key;
+    return translations[lang][key];
 } 

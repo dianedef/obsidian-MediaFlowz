@@ -39,20 +39,12 @@ export interface ITwicPicsSettings {
 export interface ICloudflareSettings {
     /** ID du compte Cloudflare */
     accountId: string;
-    /** Token pour Cloudflare Images */
+    /** Token API pour Cloudflare Images et Stream */
     imagesToken: string;
-    /** Token pour Cloudflare Stream (optionnel) */
-    streamToken?: string;
     /** Variant par défaut pour les images */
     defaultVariant?: string;
     /** Domaine personnalisé */
     customDomain?: string;
-    /** Nom du bucket Cloudflare R2 */
-    bucketName?: string;
-    /** ID de la clé d'accès Cloudflare R2 */
-    r2AccessKeyId?: string;
-    /** Secret de la clé d'accès Cloudflare R2 */
-    r2SecretAccessKey?: string;
 }
 
 /**
@@ -69,7 +61,7 @@ export enum SupportedService {
  */
 export interface IPluginSettings {
     /** Service actif */
-    service: SupportedService;
+    service?: SupportedService;
     /** Configuration Cloudinary */
     cloudinary?: ICloudinarySettings;
     /** Configuration TwicPics */
@@ -81,26 +73,8 @@ export interface IPluginSettings {
 }
 
 /**
- * Paramètres par défaut
+ * Structure minimale des paramètres initiaux
  */
 export const DEFAULT_SETTINGS: IPluginSettings = {
-    service: SupportedService.CLOUDINARY,
-    cloudinary: {
-        apiKey: '',
-        apiSecret: '',
-        cloudName: ''
-    },
-    twicpics: {
-        domain: '',
-        apiKey: '',
-        path: ''
-    },
-    cloudflare: {
-        accountId: '',
-        imagesToken: '',
-        bucketName: '',
-        r2AccessKeyId: '',
-        r2SecretAccessKey: ''
-    },
     ignoredFolders: []
 }; 

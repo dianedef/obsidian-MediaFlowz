@@ -3,12 +3,15 @@ import { EventBusService } from './EventBusService';
 import { EventName } from '../types/events';
 import { Notice } from 'obsidian';
 import { getTranslation } from '../../i18n/translations';
+import { App } from 'obsidian';
 
 export class FileNameService {
    private static instance: FileNameService;
    private eventBus: EventBusService;
+   private app: App;
 
-   private constructor() {
+   private constructor(app: App) {
+      this.app = app;
       this.eventBus = EventBusService.getInstance();
       
       // Écouter les changements de frontmatter
@@ -21,9 +24,9 @@ export class FileNameService {
       });
    }
 
-   static getInstance(): FileNameService {
+   static getInstance(app: App): FileNameService {
       if (!FileNameService.instance) {
-         FileNameService.instance = new FileNameService();
+         FileNameService.instance = new FileNameService(app);
       }
       return FileNameService.instance;
    }
@@ -37,9 +40,9 @@ export class FileNameService {
          .toLowerCase();
    }
 
-   async getFilePrefix(file: TFile, app: any): Promise<string> {
+   async getFilePrefix(file: TFile): Promise<string> {
       // Essayer d'abord de récupérer depuis le frontmatter
-      const cache = app.metadataCache.getFileCache(file);
+      const cache = this.app.metadataCache.getFileCache(file);
       const frontmatter = cache?.frontmatter;
       
       if (frontmatter?.['img-prefix']) {
@@ -51,18 +54,41 @@ export class FileNameService {
       return this.toKebabCase(title);
    }
 
-   generateFileName(originalFile: File, prefix: string): string {
-      const timestamp = new Date().getTime();
-      const extension = originalFile.name.split('.').pop();
-      return `${prefix}_${timestamp}.${extension}`;
+   generateFileName(file: File, prefix: string = ''): string {
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop() || '';
+      const baseFileName = this.toKebabCase(prefix || file.name.split('.')[0]);
+      const newFileName = `${baseFileName}_${timestamp}.${fileExtension}`;
+
+      console.log('[FileNameService] Génération du nom de fichier:', {
+         original: file.name,
+         prefix,
+         timestamp,
+         extension: fileExtension,
+         newName: newFileName
+      });
+
+      return newFileName;
    }
 
-   createFileWithNewName(originalFile: File, newName?: string): File {
-      const fileName = newName || this.generateFileName(originalFile);
-      return new File([originalFile], fileName, {
-         type: originalFile.type,
-         lastModified: originalFile.lastModified
+   createFileWithNewName(file: File, newName: string): File {
+      console.log(`[FileNameService] Création d'un nouveau fichier avec le nom ${newName}`, {
+         originalName: file.name,
+         originalType: file.type,
+         originalSize: file.size
       });
+
+      // Créer un nouveau fichier avec le nouveau nom
+      const blob = file.slice(0, file.size, file.type);
+      const newFile = new File([blob], newName, { type: file.type });
+
+      console.log('[FileNameService] Nouveau fichier créé:', {
+         name: newFile.name,
+         type: newFile.type,
+         size: newFile.size
+      });
+
+      return newFile;
    }
 
    private async updateImagePrefixes(file: TFile, oldPrefix: string, newPrefix: string) {

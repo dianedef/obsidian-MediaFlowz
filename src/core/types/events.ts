@@ -16,6 +16,8 @@ export enum EventName {
     
     /** Émis quand un média est collé dans l'éditeur */
     MEDIA_PASTED = 'media:pasted',
+    /** Émis quand un média est collé dans l'éditeur (interne) */
+    MEDIA_PASTED_INTERNAL = 'media:pasted:internal',
     /** Émis quand un média est uploadé avec succès */
     MEDIA_UPLOADED = 'media:uploaded',
     /** Émis en cas d'erreur lors de l'upload */
@@ -62,7 +64,7 @@ export interface EventMap {
     /** Données émises lors du collage d'un média */
     [EventName.MEDIA_PASTED]: {
         /** Liste des fichiers collés */
-        files: globalThis.FileList;
+        files: FileList | File[];
     };
     
     /** Données émises après un upload réussi */
@@ -131,6 +133,10 @@ export interface EventMap {
         file: TFile;
         oldPrefix?: string;
         newPrefix: string;
+    };
+
+    [EventName.MEDIA_PASTED_INTERNAL]: {
+        data: any;
     };
 }
 

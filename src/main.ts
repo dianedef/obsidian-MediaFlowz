@@ -20,23 +20,43 @@ export default class MediaFlowzPlugin extends Plugin {
     private mediaUploadService: IMediaUploadService;
 
     async onload() {
-        await this.loadSettings();
-        
         this.eventBus = EventBusService.getInstance();
         this.editorService = EditorService.getInstance();
-        this.fileNameService = FileNameService.getInstance();
+        this.fileNameService = FileNameService.getInstance(this.app);
+        
+        await this.loadSettings();
+        console.log('[MediaFlowz] Paramètres chargés:', this.settings);
         
         this.mediaUploadService = MediaUploadServiceFactory.getService(this.settings);
+        console.log('[MediaFlowz] Service créé:', this.settings.service);
+        
+        this.setupEventListeners();
+        
+        this.eventBus.emit(EventName.SETTINGS_UPDATED, { settings: this.settings });
+        
+        registerStyles();
+        this.addSettingTab(new MediaFlowzSettingsTab(this.app, this));
+    }
 
+    private setupEventListeners(): void {
         this.eventBus.on(EventName.SETTINGS_UPDATED, ({ settings }) => {
-            this.mediaUploadService = MediaUploadServiceFactory.getService(settings);
+            console.log('[MediaFlowz] Mise à jour des paramètres:', settings);
+            this.settings = settings;
+            if (this.mediaUploadService) {
+                this.mediaUploadService = MediaUploadServiceFactory.getService(settings);
+                console.log('[MediaFlowz] Service mis à jour:', settings.service);
+            }
         });
 
-        registerStyles();
-
-        this.addSettingTab(new MediaFlowzSettingsTab(this.app, this));
-
-        this.eventBus.on(EventName.MEDIA_PASTED, () => {
+        this.eventBus.on(EventName.MEDIA_PASTED, ({ files }) => {
+            console.log('[MediaFlowz] Média collé:', {
+                count: files.length,
+                files: Array.from(files).map(f => ({
+                    name: f.name,
+                    type: f.type,
+                    size: f.size
+                }))
+            });
             showNotice(getTranslation('notices.mediaPasted'), NOTICE_DURATIONS.MEDIUM);
         });
 
@@ -70,23 +90,38 @@ export default class MediaFlowzPlugin extends Plugin {
 
                 const files = evt.clipboardData?.files;
                 if (files?.length) {
+                    console.log('[MediaFlowz] Fichiers détectés dans le presse-papier:', files.length);
                     const prefix = await this.fileNameService.getFilePrefix(activeFile);
                     
-                    const mediaFiles = Array.from(files).filter(file => 
-                        file.type.startsWith('image/') || 
-                        file.type.startsWith('video/') ||
-                        file.type.startsWith('audio/')
-                    ).map(file => this.fileNameService.createFileWithNewName(
-                        file,
-                        this.fileNameService.generateFileName(file, prefix)
-                    ));
+                    const mediaFiles = Array.from(files).filter(file => {
+                        const isMedia = file.type.startsWith('image/') || 
+                            file.type.startsWith('video/') ||
+                            file.type.startsWith('audio/');
+                        console.log(`[MediaFlowz] Vérification du fichier ${file.name}:`, {
+                            type: file.type,
+                            isMedia
+                        });
+                        return isMedia;
+                    }).map(file => {
+                        const newName = this.fileNameService.generateFileName(file, prefix);
+                        console.log(`[MediaFlowz] Renommage du fichier ${file.name} en ${newName}`);
+                        return this.fileNameService.createFileWithNewName(file, newName);
+                    });
 
                     if (mediaFiles.length) {
+                        console.log('[MediaFlowz] Fichiers médias trouvés:', mediaFiles.length);
                         evt.preventDefault();
-                        const dataTransfer = new DataTransfer();
-                        mediaFiles.forEach(file => dataTransfer.items.add(file));
-                        this.eventBus.emit(EventName.MEDIA_PASTED, { files: dataTransfer.files });
+                        mediaFiles.forEach(file => {
+                            console.log(`[MediaFlowz] Traitement du fichier:`, {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size
+                            });
+                        });
+                        this.eventBus.emit(EventName.MEDIA_PASTED, { files: mediaFiles });
                         return;
+                    } else {
+                        console.log('[MediaFlowz] Aucun fichier média trouvé dans le presse-papier');
                     }
                 }
 
@@ -123,9 +158,17 @@ export default class MediaFlowzPlugin extends Plugin {
                                 this.fileNameService.generateFileName(file, prefix)
                             ));
 
-                        const dataTransfer = new DataTransfer();
-                        files.forEach(file => dataTransfer.items.add(file));
-                        this.eventBus.emit(EventName.MEDIA_DROPPED, { files: dataTransfer.files });
+                        console.log('[MediaFlowz] Fichiers médias trouvés depuis items:', files.length);
+                        files.forEach(file => {
+                            console.log(`[MediaFlowz] Traitement du fichier:`, {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size
+                            });
+                        });
+                        
+                        // Envoyer directement le tableau de fichiers
+                        this.eventBus.emit(EventName.MEDIA_PASTED, { files });
                         return;
                     }
                 }
@@ -134,7 +177,8 @@ export default class MediaFlowzPlugin extends Plugin {
 
         this.registerEditorExtension(EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-                this.editorService.handleDocumentChange();
+                // Supprimé car la méthode n'existe pas
+                // this.editorService.handleDocumentChange();
             }
         }));
 
@@ -156,10 +200,32 @@ export default class MediaFlowzPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const savedData = await this.loadData();
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
+        
+        // S'assurer que le service est correctement défini
+        if (!this.settings.service) {
+            this.settings.service = DEFAULT_SETTINGS.service;
+        }
+
+        // Vérifier que les paramètres Cloudflare sont complets
+        if (this.settings.service === 'cloudflare' && this.settings.cloudflare) {
+            console.log('[MediaFlowz] Vérification des paramètres Cloudflare:', {
+                accountId: this.settings.cloudflare.accountId,
+                hasToken: !!this.settings.cloudflare.imagesToken
+            });
+        }
+
+        console.log('[MediaFlowz] Paramètres chargés depuis le stockage:', {
+            service: this.settings.service,
+            hasCloudflareConfig: !!this.settings.cloudflare,
+            cloudflareAccountId: this.settings.cloudflare?.accountId,
+            hasCloudflareToken: !!this.settings.cloudflare?.imagesToken
+        });
     }
 
     async saveSettings() {
         await this.saveData(this.settings);
+        this.eventBus.emit(EventName.SETTINGS_UPDATED, { settings: this.settings });
     }
 } 
