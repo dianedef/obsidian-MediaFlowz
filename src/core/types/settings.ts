@@ -58,7 +58,11 @@ export interface ICloudflareSettings {
 /**
  * Type des services supportés
  */
-export type SupportedService = 'cloudinary' | 'twicpics' | 'cloudflare';
+export enum SupportedService {
+    CLOUDINARY = 'cloudinary',
+    TWICPICS = 'twicpics',
+    CLOUDFLARE = 'cloudflare'
+}
 
 /**
  * Configuration globale du plugin
@@ -80,7 +84,7 @@ export interface IPluginSettings {
  * Paramètres par défaut
  */
 export const DEFAULT_SETTINGS: IPluginSettings = {
-    service: 'cloudinary',
+    service: SupportedService.CLOUDINARY,
     cloudinary: {
         apiKey: '',
         apiSecret: '',

@@ -1,5 +1,8 @@
 import { moment } from 'obsidian';
 
+type TranslationKey = keyof typeof fr;
+type Translations = Record<'fr' | 'en', Record<TranslationKey, string>>;
+
 const fr = {
     // Paramètres généraux
     'settings.title': 'Paramètres MediaFlowz',
@@ -30,21 +33,17 @@ const fr = {
 
     // Paramètres Cloudflare
     'settings.cloudflare.title': 'Configuration Cloudflare',
-    'settings.cloudflare.description': 'Cloudflare Images et R2 permettent de stocker et servir vos médias via le réseau CDN mondial de Cloudflare.',
+    'settings.cloudflare.description': 'Cloudflare Images et Stream permettent de stocker et servir vos médias via le réseau CDN mondial de Cloudflare.',
     'settings.cloudflare.accountId': 'ID du compte',
-    'settings.cloudflare.accountIdDesc': 'L\'identifiant de votre compte Cloudflare.',
-    'settings.cloudflare.imagesToken': 'Token Images',
-    'settings.cloudflare.imagesTokenDesc': 'Token API pour Cloudflare Images.',
-    'settings.cloudflare.streamToken': 'Token Stream',
-    'settings.cloudflare.streamTokenDesc': 'Token API pour Cloudflare Stream (optionnel, pour les vidéos).',
-    'settings.cloudflare.customDomain': 'Domaine personnalisé',
-    'settings.cloudflare.customDomainDesc': 'Domaine personnalisé pour servir vos médias (optionnel).',
-    'settings.cloudflare.bucketName': 'Nom du bucket R2',
-    'settings.cloudflare.bucketNameDesc': 'Le nom de votre bucket Cloudflare R2.',
-    'settings.cloudflare.r2AccessKeyId': 'Clé d\'accès R2',
-    'settings.cloudflare.r2AccessKeyIdDesc': 'L\'identifiant de votre clé d\'accès R2.',
-    'settings.cloudflare.r2SecretAccessKey': 'Secret R2',
-    'settings.cloudflare.r2SecretAccessKeyDesc': 'La clé secrète de votre accès R2.',
+    'settings.cloudflare.accountIdDesc': 'Trouvez votre Account ID dans le Dashboard Cloudflare : ' +
+            'Allez sur dash.cloudflare.com > Cliquez sur le menu en haut à droite > ' +
+            'Accueil du compte > L\'ID est affiché dans le petit menu à droite de votre nom sous "copier l\'ID du compte"',
+
+    'settings.cloudflare.token': 'Token API',
+    'settings.cloudflare.tokenDesc': 'Token créé dans le Dashboard Cloudflare : ' +
+            'Allez sur dash.cloudflare.com > Cliquez sur le menu en haut à droite > ' +
+            'My Profile > API Tokens > Create Token > ' +
+            'Utilisez le modèle "Cloudflare Images & Stream" avec les permissions de lecture et écriture',
 
     // Notifications
     'notices.mediaPasted': '📎 Média détecté...',
@@ -107,13 +106,14 @@ const en = {
 
     // Cloudflare settings
     'settings.cloudflare.title': 'Cloudflare Configuration',
-    'settings.cloudflare.description': 'Cloudflare Images and R2 allow you to store and serve your media through Cloudflare\'s global CDN.',
+    'settings.cloudflare.description': 'Cloudflare Images and Stream allow you to store and serve your media through Cloudflare\'s global CDN.',
     'settings.cloudflare.accountId': 'Account ID',
     'settings.cloudflare.accountIdDesc': 'Your Cloudflare account identifier.',
-    'settings.cloudflare.imagesToken': 'Images Token',
-    'settings.cloudflare.imagesTokenDesc': 'API Token for Cloudflare Images.',
-    'settings.cloudflare.streamToken': 'Stream Token',
-    'settings.cloudflare.streamTokenDesc': 'API Token for Cloudflare Stream (optional, for videos).',
+    'settings.cloudflare.token': 'API Token',
+    'settings.cloudflare.tokenDesc': 'Token created in Cloudflare Dashboard: ' +
+            'Go to dash.cloudflare.com > Click on the top right menu > ' +
+            'My Profile > API Tokens > Create Token > ' +
+            'Use the "Cloudflare Images & Stream" template with read and write permissions',
     'settings.cloudflare.customDomain': 'Custom Domain',
     'settings.cloudflare.customDomainDesc': 'Custom domain to serve your media (optional).',
     'settings.cloudflare.bucketName': 'R2 Bucket Name',
@@ -154,15 +154,15 @@ const en = {
     'settings.ignoredFolders.remove': 'Remove this folder',
 };
 
-export const translations = { fr, en };
+export const translations: Translations = { fr, en };
 
-export function getCurrentLocale(): string {
+export function getCurrentLocale(): 'fr' | 'en' {
     const locale = moment.locale() || 'en';
     console.log('Current locale detected:', locale);
-    return locale;
+    return locale === 'fr' ? 'fr' : 'en';
 }
 
-export function getTranslation(key: string): string {
+export function getTranslation(key: TranslationKey): string {
     const currentLocale = getCurrentLocale();
     const lang = translations[currentLocale] ? currentLocale : 'en';
     console.log('Translation request:', {

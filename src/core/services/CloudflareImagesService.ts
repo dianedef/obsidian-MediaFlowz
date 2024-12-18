@@ -4,19 +4,65 @@ import { ICloudflareSettings } from '../types/settings';
 import { ErrorService, ErrorType } from './ErrorService';
 import { EventBusService } from './EventBusService';
 import { SettingsService } from './SettingsService';
+import { EventName } from '../types/events';
 
 export class CloudflareImagesService extends AbstractMediaUploadService {
     private settings: ICloudflareSettings;
     private baseUrl: string;
+    private static instance: CloudflareImagesService;
 
-    constructor(
+    private constructor(
         settingsService: SettingsService,
         eventBus: EventBusService,
         errorService: ErrorService
     ) {
         super(settingsService, eventBus, errorService);
-        this.settings = this.settingsService.getSettings().cloudflare || {};
+        this.settings = this.settingsService.getSettings().cloudflare || {} as ICloudflareSettings;
         this.baseUrl = this.settings.customDomain || 'imagedelivery.net';
+        this.initializeEventListeners();
+    }
+
+    private initializeEventListeners(): void {
+        this.eventBus.on(EventName.SETTINGS_UPDATED, this.handleSettingsUpdate.bind(this));
+        this.eventBus.on(EventName.MEDIA_PASTED, this.handleMediaUpload.bind(this));
+    }
+
+    private handleSettingsUpdate(data: { settings: { cloudflare?: ICloudflareSettings } }): void {
+        this.settings = data.settings.cloudflare || {} as ICloudflareSettings;
+        this.baseUrl = this.settings.customDomain || 'imagedelivery.net';
+    }
+
+    protected async handleMediaUpload(data: { files: FileList }): Promise<void> {
+        for (let i = 0; i < data.files.length; i++) {
+            const file = data.files[i];
+            try {
+                const response = await this.upload(file);
+                this.eventBus.emit(EventName.MEDIA_UPLOADED, {
+                    url: response.url,
+                    fileName: file.name
+                });
+            } catch (error) {
+                this.eventBus.emit(EventName.MEDIA_UPLOAD_ERROR, {
+                    error: error as Error,
+                    fileName: file.name
+                });
+            }
+        }
+    }
+
+    public static getInstance(
+        settingsService: SettingsService,
+        eventBus: EventBusService,
+        errorService: ErrorService
+    ): CloudflareImagesService {
+        if (!CloudflareImagesService.instance) {
+            CloudflareImagesService.instance = new CloudflareImagesService(
+                settingsService,
+                eventBus,
+                errorService
+            );
+        }
+        return CloudflareImagesService.instance;
     }
 
     public isConfigured(): boolean {
@@ -136,5 +182,9 @@ export class CloudflareImagesService extends AbstractMediaUploadService {
     public getUrl(publicId: string, transformation?: string): string {
         const variant = transformation || this.settings.defaultVariant || 'public';
         return `https://${this.baseUrl}/${this.settings.accountId}/${publicId}/${variant}`;
+    }
+
+    public static cleanup(): void {
+        CloudflareImagesService.instance = undefined;
     }
 } 

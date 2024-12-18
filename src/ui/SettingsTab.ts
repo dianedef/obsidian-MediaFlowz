@@ -1,17 +1,21 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import type MediaFlowz from '../main';
+import MediaFlowzPlugin from '../main';
 import { getTranslation } from '../i18n/translations';
+import { SupportedService } from '../core/types/settings';
+import { EventBusService } from '../core/services/EventBusService';
+import { EventName } from '../core/types/events';
 import { SettingsService } from '../core/services/SettingsService';
 import { showNotice, NOTICE_DURATIONS } from '../utils/notifications';
-import { SupportedService } from '../core/types/settings';
 
 export class MediaFlowzSettingsTab extends PluginSettingTab {
-    plugin: MediaFlowz;
-    settingsService: SettingsService;
+    plugin: MediaFlowzPlugin;
+    private eventBus: EventBusService;
+    private settingsService: SettingsService;
 
-    constructor(app: App, plugin: MediaFlowz) {
+    constructor(app: App, plugin: MediaFlowzPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+        this.eventBus = EventBusService.getInstance();
         this.settingsService = SettingsService.getInstance();
     }
 
@@ -41,7 +45,6 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                 
                 // Gérer le changement
                 dropdown.onChange(async (value) => {
-
                     const settingsSection = containerEl.querySelector('.service-settings-section');
                     if (settingsSection) {
                         settingsSection.addClass('fade-out');
@@ -81,8 +84,6 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                         );
                     }
                 });
-                
-                return dropdown;
             });
 
         // Section des paramètres spécifiques au service
@@ -90,13 +91,13 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
 
         // Afficher les paramètres selon le service sélectionné
         switch (this.plugin.settings.service) {
-            case 'cloudinary':
+            case SupportedService.CLOUDINARY:
                 this.displayCloudinarySettings(serviceSettingsSection);
                 break;
-            case 'twicpics':
+            case SupportedService.TWICPICS:
                 this.displayTwicPicsSettings(serviceSettingsSection);
                 break;
-            case 'cloudflare':
+            case SupportedService.CLOUDFLARE:
                 this.displayCloudflareSettings(serviceSettingsSection);
                 break;
         }
@@ -261,7 +262,6 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
         const titleKey = 'settings.twicpics.title';
         const descKey = 'settings.twicpics.description';
 
-
         containerEl.createEl('h3', { text: getTranslation(titleKey) });
         containerEl.createEl('p', { 
             text: getTranslation(descKey),
@@ -284,8 +284,8 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName(getTranslation('settings.apiKey'))
-            .setDesc(getTranslation('settings.apiKeyDesc'))
+            .setName(getTranslation('settings.twicpics.apiKey'))
+            .setDesc(getTranslation('settings.twicpics.apiKeyDesc'))
             .addText(text => text
                 .setPlaceholder('your-api-key')
                 .setValue(this.plugin.settings.twicpics?.apiKey ?? '')
@@ -327,10 +327,8 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
 
         // Account ID
         new Setting(containerEl)
-            .setName('Account ID')
-            .setDesc('Trouvez votre Account ID dans le Dashboard Cloudflare : ' +
-                    'Allez sur dash.cloudflare.com > Cliquez sur le menu en haut à droite > ' +
-                    'Accueil du compte > L\'ID est affiché dans le petit menu à droite de votre nom sous "copier l\'ID du compte"')
+            .setName(getTranslation('settings.cloudflare.accountId'))
+            .setDesc(getTranslation('settings.cloudflare.accountIdDesc'))
             .addText(text => text
                 .setPlaceholder('Ex: 1a2b3c4d5e6f7g8h9i0j')
                 .setValue(this.plugin.settings.cloudflare?.accountId ?? '')
@@ -343,13 +341,10 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                     });
                 }));
 
-        // API Token (utilisé pour Images et Stream)
+        // API Token unique pour Images et Stream
         new Setting(containerEl)
-            .setName('API Token')
-            .setDesc('Token créé dans le Dashboard Cloudflare : ' +
-                    'Allez sur dash.cloudflare.com > Cliquez sur le menu en haut à droite > ' +
-                    'My Profile > API Tokens > Create Token > ' +
-                    'Utilisez le modèle "Cloudflare Images & Stream"')
+            .setName(getTranslation('settings.cloudflare.token'))
+            .setDesc(getTranslation('settings.cloudflare.tokenDesc'))
             .addText(text => text
                 .setPlaceholder('Ex: XyZ_123-ABC...')
                 .setValue(this.plugin.settings.cloudflare?.imagesToken ?? '')
@@ -358,16 +353,16 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                         cloudflare: {
                             ...this.plugin.settings.cloudflare,
                             imagesToken: value,
-                            streamToken: value
+                            streamToken: value // Le même token pour les deux services
                         }
                     });
                 }))
-                .addExtraButton(button => button
-                    .setIcon('help')
-                    .setTooltip('Ce token unique est utilisé à la fois pour Images et Stream. ' +
-                              'Assurez-vous d\'avoir sélectionné les permissions "Images" et "Stream" lors de sa création.')
-                    .onClick(() => {
-                        // Optionnel : ajouter une action au clic sur l'aide
-                    }));
+            .addExtraButton(button => button
+                .setIcon('help')
+                .setTooltip('Ce token unique est utilisé à la fois pour Images et Stream. ' +
+                          'Assurez-vous d\'avoir sélectionné les permissions "Images" et "Stream" lors de sa création.')
+                .onClick(() => {
+                    // Optionnel : ajouter une action au clic sur l'aide
+                }));
     }
 } 

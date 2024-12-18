@@ -1,9 +1,9 @@
 import { AbstractMediaUploadService } from './AbstractMediaUploadService';
 import { IUploadResponse, IUploadOptions } from './interfaces/IMediaUploadService';
 import { ITwicPicsSettings } from '../types/settings';
-import { EventBusService } from '../EventBusService';
+import { EventBusService } from './EventBusService';
 import { EventName } from '../types/events';
-import { ofetch, createFetch, FetchError, $Fetch, CreateFetchOptions } from 'ofetch';
+import { createFetch, $Fetch, CreateFetchOptions } from 'ofetch';
 
 export class TwicPicsService extends AbstractMediaUploadService {
     private static instance: TwicPicsService;
