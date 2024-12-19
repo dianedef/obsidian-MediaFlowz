@@ -74,6 +74,59 @@ export interface IPluginSettings {
     ignoredFolders: string[];
     /** Barre d'outils */
     showImageToolbar: boolean;
+    /** Boutons de la barre d'outils */
+    toolbarButtons: {
+        copyImage: boolean;
+        copyLink: boolean;
+        fullscreen: boolean;
+        openInDefaultApp: boolean;
+        showInExplorer: boolean;
+        revealInNavigation: boolean;
+        renameImage: boolean;
+        addCaption: boolean;
+    };
+    /** Types de médias activés */
+    enabledMediaTypes: {
+        images: boolean;
+        videos: boolean;
+        gifs: boolean;
+    };
+    /** Taille par défaut des images */
+    defaultImageWidth: 'small' | 'medium' | 'large' | 'original';
+    /** Modifier la taille avec alt + scroll */
+    enableAltScroll: boolean;
+    /** Actions des clics de souris */
+    mouseActions: {
+        /** Action du clic du milieu */
+        middleClick: {
+            enabled: boolean;
+            action: string;
+        };
+        /** Action du clic droit */
+        rightClick: {
+            enabled: boolean;
+            action: string;
+        };
+    };
+    /** Paramètres d'optimisation des images */
+    imageOptimization: {
+        /** Mode d'optimisation */
+        mode: 'smart' | 'manual';
+        /** Paramètres du mode intelligent */
+        smartMode: {
+            /** Taille maximale en Ko */
+            maxSizeKb: number;
+            /** Qualité minimale acceptable (1-100) */
+            minQuality: number;
+            /** DPI cible */
+            targetDPI: number;
+        };
+        /** Paramètres du mode manuel */
+        manualMode: {
+            /** Qualité de compression (1-100) */
+            quality: number;
+        };
+    };
 }
 
 /**
@@ -83,8 +136,46 @@ export const DEFAULT_SETTINGS: IPluginSettings = {
     service: 'cloudflare',
     ignoredFolders: [],
     showImageToolbar: true,
+    toolbarButtons: {
+        copyImage: true,
+        copyLink: true,
+        fullscreen: true,
+        openInDefaultApp: true,
+        showInExplorer: true,
+        revealInNavigation: true,
+        renameImage: true,
+        addCaption: true
+    },
     cloudflare: {
         accountId: '',
         imagesToken: ''
+    },
+    enabledMediaTypes: {
+        images: true,
+        videos: true,
+        gifs: true
+    },
+    defaultImageWidth: 'medium',
+    enableAltScroll: true,
+    mouseActions: {
+        middleClick: {
+            enabled: true,
+            action: 'none'
+        },
+        rightClick: {
+            enabled: true,
+            action: 'none'
+        }
+    },
+    imageOptimization: {
+        mode: 'smart',
+        smartMode: {
+            maxSizeKb: 500,  // 500Ko max par défaut
+            minQuality: 80,  // Ne pas descendre sous 80% de qualité
+            targetDPI: 144   // DPI standard pour écrans haute résolution
+        },
+        manualMode: {
+            quality: 85
+        }
     }
 }; 

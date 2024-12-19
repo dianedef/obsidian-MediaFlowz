@@ -23,15 +23,85 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        // Titre principal
-        const titleText = this.plugin.settings.service 
-            ? `${getTranslation('settings.title')} - ${this.plugin.settings.service.charAt(0).toUpperCase() + this.plugin.settings.service.slice(1)}`
-            : getTranslation('settings.title');
-        containerEl.createEl('h2', { text: titleText });
+        // Section des types de médias
+        containerEl.createEl('h3', { text: getTranslation('settings.mediaTypes.title') });
+        containerEl.createEl('p', { 
+            text: getTranslation('settings.mediaTypes.desc'),
+            cls: 'setting-item-description'
+        });
+
+        // Images
+        new Setting(containerEl)
+            .setName(getTranslation('settings.mediaTypes.images'))
+            .setDesc(getTranslation('settings.mediaTypes.images.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enabledMediaTypes.images)
+                .onChange(async (value) => {
+                    this.plugin.settings.enabledMediaTypes.images = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        // Vidéos
+        new Setting(containerEl)
+            .setName(getTranslation('settings.mediaTypes.videos'))
+            .setDesc(getTranslation('settings.mediaTypes.videos.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enabledMediaTypes.videos)
+                .onChange(async (value) => {
+                    this.plugin.settings.enabledMediaTypes.videos = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        // GIFs
+        new Setting(containerEl)
+            .setName(getTranslation('settings.mediaTypes.gifs'))
+            .setDesc(getTranslation('settings.mediaTypes.gifs.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enabledMediaTypes.gifs)
+                .onChange(async (value) => {
+                    this.plugin.settings.enabledMediaTypes.gifs = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        // Section de la taille des images
+        containerEl.createEl('h3', { text: getTranslation('settings.imageSize.title') });
+
+        // Taille par défaut
+        new Setting(containerEl)
+            .setName(getTranslation('settings.imageSize.default'))
+            .setDesc(getTranslation('settings.imageSize.default.desc'))
+            .addDropdown(dropdown => {
+                dropdown
+                    .addOption('small', getTranslation('settings.imageSize.small'))
+                    .addOption('medium', getTranslation('settings.imageSize.medium'))
+                    .addOption('large', getTranslation('settings.imageSize.large'))
+                    .addOption('original', getTranslation('settings.imageSize.original'))
+                    .setValue(this.plugin.settings.defaultImageWidth)
+                    .onChange(async (value: 'small' | 'medium' | 'large' | 'original') => {
+                        this.plugin.settings.defaultImageWidth = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        // Alt + Scroll
+        new Setting(containerEl)
+            .setName(getTranslation('settings.imageSize.altScroll'))
+            .setDesc(getTranslation('settings.imageSize.altScroll.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAltScroll)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAltScroll = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
         // Section des fonctionnalités
         containerEl.createEl('h3', { text: getTranslation('settings.features.title') });
         
+        // Barre d'outils image
         new Setting(containerEl)
             .setName(getTranslation('settings.features.imageToolbar.name'))
             .setDesc(getTranslation('settings.features.imageToolbar.desc'))
@@ -42,6 +112,288 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+
+        // Section d'optimisation des images
+        containerEl.createEl('h3', { text: getTranslation('settings.imageOptimization.title') });
+        containerEl.createEl('p', { 
+            text: getTranslation('settings.imageOptimization.desc'),
+            cls: 'setting-item-description'
+        });
+
+        // Mode d'optimisation
+        new Setting(containerEl)
+            .setName(getTranslation('settings.imageOptimization.mode'))
+            .setDesc(getTranslation('settings.imageOptimization.mode.desc'))
+            .addDropdown(dropdown => {
+                dropdown
+                    .addOption('smart', getTranslation('settings.imageOptimization.mode.smart'))
+                    .addOption('manual', getTranslation('settings.imageOptimization.mode.manual'))
+                    .setValue(this.plugin.settings.imageOptimization.mode)
+                    .onChange(async (value: 'smart' | 'manual') => {
+                        this.plugin.settings.imageOptimization.mode = value;
+                        await this.plugin.saveSettings();
+                        // Recharger la page pour afficher/masquer les options appropriées
+                        this.display();
+                    });
+            });
+
+        // Options du mode intelligent
+        if (this.plugin.settings.imageOptimization.mode === 'smart') {
+            const smartSection = containerEl.createDiv('smart-optimization-section');
+            
+            // Description du mode intelligent
+            smartSection.createEl('p', {
+                text: getTranslation('settings.imageOptimization.smart.desc'),
+                cls: 'setting-item-description'
+            });
+            
+            // Taille maximale
+            new Setting(smartSection)
+                .setName(getTranslation('settings.imageOptimization.smart.maxSize'))
+                .setDesc(getTranslation('settings.imageOptimization.smart.maxSize.desc'))
+                .addSlider(slider => slider
+                    .setLimits(100, 2000, 100)
+                    .setValue(this.plugin.settings.imageOptimization.smartMode.maxSizeKb)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.imageOptimization.smartMode.maxSizeKb = value;
+                        await this.plugin.saveSettings();
+                    })
+                )
+                .addExtraButton(button => button
+                    .setIcon('reset')
+                    .setTooltip('Reset to default (500KB)')
+                    .onClick(async () => {
+                        this.plugin.settings.imageOptimization.smartMode.maxSizeKb = 500;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }));
+
+            // Qualité minimale
+            new Setting(smartSection)
+                .setName(getTranslation('settings.imageOptimization.smart.minQuality'))
+                .setDesc(getTranslation('settings.imageOptimization.smart.minQuality.desc'))
+                .addSlider(slider => slider
+                    .setLimits(50, 100, 5)
+                    .setValue(this.plugin.settings.imageOptimization.smartMode.minQuality)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.imageOptimization.smartMode.minQuality = value;
+                        await this.plugin.saveSettings();
+                    })
+                )
+                .addExtraButton(button => button
+                    .setIcon('reset')
+                    .setTooltip('Reset to default (80%)')
+                    .onClick(async () => {
+                        this.plugin.settings.imageOptimization.smartMode.minQuality = 80;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }));
+
+            // DPI cible
+            new Setting(smartSection)
+                .setName(getTranslation('settings.imageOptimization.smart.targetDPI'))
+                .setDesc(getTranslation('settings.imageOptimization.smart.targetDPI.desc'))
+                .addDropdown(dropdown => dropdown
+                    .addOption('72', '72 DPI (Web)')
+                    .addOption('144', '144 DPI (HiDPI)')
+                    .addOption('300', '300 DPI (Print)')
+                    .setValue(this.plugin.settings.imageOptimization.smartMode.targetDPI.toString())
+                    .onChange(async (value) => {
+                        this.plugin.settings.imageOptimization.smartMode.targetDPI = parseInt(value);
+                        await this.plugin.saveSettings();
+                    }));
+        }
+
+        // Options du mode manuel
+        if (this.plugin.settings.imageOptimization.mode === 'manual') {
+            const manualSection = containerEl.createDiv('manual-optimization-section');
+
+            // Description du mode manuel
+            manualSection.createEl('p', {
+                text: getTranslation('settings.imageOptimization.manual.desc'),
+                cls: 'setting-item-description'
+            });
+
+            // Qualité de compression
+            new Setting(manualSection)
+                .setName(getTranslation('settings.imageOptimization.manual.quality'))
+                .setDesc(getTranslation('settings.imageOptimization.manual.quality.desc'))
+                .addSlider(slider => slider
+                    .setLimits(1, 100, 1)
+                    .setValue(this.plugin.settings.imageOptimization.manualMode.quality)
+                    .setDynamicTooltip()
+                    .onChange(async (value) => {
+                        this.plugin.settings.imageOptimization.manualMode.quality = value;
+                        await this.plugin.saveSettings();
+                    })
+                )
+                .addExtraButton(button => button
+                    .setIcon('reset')
+                    .setTooltip('Reset to default (85%)')
+                    .onClick(async () => {
+                        this.plugin.settings.imageOptimization.manualMode.quality = 85;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }));
+        }
+
+        // Sous-section des boutons de la barre d'outils
+        if (this.plugin.settings.showImageToolbar) {
+            const toolbarSection = containerEl.createDiv('toolbar-buttons-section');
+            toolbarSection.createEl('p', { 
+                text: getTranslation('settings.toolbar.desc'),
+                cls: 'setting-item-description'
+            });
+
+            // Copier l'image
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.copyImage'))
+                .setDesc(getTranslation('settings.toolbar.copyImage.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.copyImage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.copyImage = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Copier le lien
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.copyLink'))
+                .setDesc(getTranslation('settings.toolbar.copyLink.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.copyLink)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.copyLink = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Plein écran
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.fullscreen'))
+                .setDesc(getTranslation('settings.toolbar.fullscreen.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.fullscreen)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.fullscreen = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Ouvrir dans l'application par défaut
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.openInDefaultApp'))
+                .setDesc(getTranslation('settings.toolbar.openInDefaultApp.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.openInDefaultApp)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.openInDefaultApp = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Afficher dans l'explorateur
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.showInExplorer'))
+                .setDesc(getTranslation('settings.toolbar.showInExplorer.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.showInExplorer)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.showInExplorer = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Révéler dans la navigation
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.revealInNavigation'))
+                .setDesc(getTranslation('settings.toolbar.revealInNavigation.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.revealInNavigation)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.revealInNavigation = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Renommer l'image
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.renameImage'))
+                .setDesc(getTranslation('settings.toolbar.renameImage.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.renameImage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.renameImage = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+
+            // Ajouter une légende
+            new Setting(toolbarSection)
+                .setName(getTranslation('settings.toolbar.addCaption'))
+                .setDesc(getTranslation('settings.toolbar.addCaption.desc'))
+                .addToggle(toggle => toggle
+                    .setValue(this.plugin.settings.toolbarButtons.addCaption)
+                    .onChange(async (value) => {
+                        this.plugin.settings.toolbarButtons.addCaption = value;
+                        await this.plugin.saveSettings();
+                    })
+                );
+        }
+
+        // Section des actions de souris
+        containerEl.createEl('h3', { text: getTranslation('settings.mouseActions.title') });
+        containerEl.createEl('p', { 
+            text: getTranslation('settings.mouseActions.desc'),
+            cls: 'setting-item-description'
+        });
+
+        // Clic du milieu
+        new Setting(containerEl)
+            .setName(getTranslation('settings.mouseActions.middleClick'))
+            .setDesc(getTranslation('settings.mouseActions.middleClick.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.mouseActions.middleClick.enabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.mouseActions.middleClick.enabled = value;
+                    await this.plugin.saveSettings();
+                })
+            )
+            .addDropdown(dropdown => {
+                dropdown
+                    .addOption('none', getTranslation('settings.mouseActions.action.none'))
+                    .setValue(this.plugin.settings.mouseActions.middleClick.action)
+                    .setDisabled(!this.plugin.settings.mouseActions.middleClick.enabled)
+                    .onChange(async (value) => {
+                        this.plugin.settings.mouseActions.middleClick.action = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        // Clic droit
+        new Setting(containerEl)
+            .setName(getTranslation('settings.mouseActions.rightClick'))
+            .setDesc(getTranslation('settings.mouseActions.rightClick.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.mouseActions.rightClick.enabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.mouseActions.rightClick.enabled = value;
+                    await this.plugin.saveSettings();
+                })
+            )
+            .addDropdown(dropdown => {
+                dropdown
+                    .addOption('none', getTranslation('settings.mouseActions.action.none'))
+                    .setValue(this.plugin.settings.mouseActions.rightClick.action)
+                    .setDisabled(!this.plugin.settings.mouseActions.rightClick.enabled)
+                    .onChange(async (value) => {
+                        this.plugin.settings.mouseActions.rightClick.action = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // Section de sélection du service
         const serviceSection = containerEl.createDiv('service-section');
