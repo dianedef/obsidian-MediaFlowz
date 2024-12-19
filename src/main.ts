@@ -189,7 +189,12 @@ export default class MediaFlowzPlugin extends Plugin {
 
     onunload() {
         unregisterStyles();
-        this.eventBus.off(EventName.SETTINGS_UPDATED);
+        this.eventBus.off(EventName.SETTINGS_UPDATED, ({ settings }) => {
+            this.settings = settings;
+            if (this.mediaUploadService) {
+                this.mediaUploadService = MediaUploadServiceFactory.getService(settings);
+            }
+        });
         
         if (this.mediaUploadService instanceof CloudflareMediaService) {
             CloudflareMediaService.cleanup();
@@ -212,23 +217,25 @@ export default class MediaFlowzPlugin extends Plugin {
         const savedData = await this.loadData();
         this.settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
         
+        // S'assurer que le service est défini
         if (!this.settings.service) {
             this.settings.service = DEFAULT_SETTINGS.service;
         }
 
-        if (this.settings.service === 'cloudflare' && this.settings.cloudflare) {
-            console.log('[MediaFlowz] Vérification des paramètres Cloudflare:', {
-                accountId: this.settings.cloudflare.accountId,
-                hasToken: !!this.settings.cloudflare.imagesToken
-            });
+        // S'assurer que la configuration Cloudflare existe
+        if (this.settings.service === 'cloudflare' && !this.settings.cloudflare) {
+            this.settings.cloudflare = DEFAULT_SETTINGS.cloudflare;
         }
 
-        console.log('[MediaFlowz] Paramètres chargés depuis le stockage:', {
+        console.log('[MediaFlowz] Paramètres chargés:', {
             service: this.settings.service,
             hasCloudflareConfig: !!this.settings.cloudflare,
             cloudflareAccountId: this.settings.cloudflare?.accountId,
             hasCloudflareToken: !!this.settings.cloudflare?.imagesToken
         });
+
+        // Émettre l'événement de mise à jour des paramètres
+        this.eventBus.emit(EventName.SETTINGS_UPDATED, { settings: this.settings });
     }
 
     async saveSettings() {

@@ -181,222 +181,192 @@ aller dans https://dash.cloudflare.com/b805cca6c486d78d68e7a4498292be56/images/p
 
 ## roadmap
 
-J'aimerais aussi qu'on ajoute un section de paramètre lié à l'affichage de l'image : taille par défaut, boolean modifier la taille avec alt + scroll
+ taille par défaut, boolean modifier la taille avec alt + scroll
 bouton pour copier l'image, bouton pour renommer (et alt ?)
 
 
  dans le worker qui fonctionne, le fichier est envoyé directement comme corps de la requête, sans FormData ni ArrayBuffer. Essayons cette approche :
 
- h oui, vous avez raison ! En fait, il y a deux approches possibles avec Cloudflare Images :
-Upload direct vers l'API Cloudflare Images
-Upload via un Worker Cloudflare (qui fait ensuite l'upload vers Cloudflare Images)
-L'approche avec le Worker est souvent utilisée pour ajouter une couche de sécurité supplémentaire, car elle permet de :
-Ne pas exposer le token Cloudflare directement dans le frontend
-Ajouter des validations supplémentaires
-Gérer des transformations avant l'upload
-Mais vous avez raison, on peut aussi utiliser l'API Cloudflare Images directement. Regardons la documentation officielle pour l'upload direct :
-
-
-
- Le processus se fait maintenant en deux étapes :
-On demande d'abord une URL d'upload direct à Cloudflare
-On utilise cette URL pour uploader le fichier
-Cette approche est plus sécurisée et plus fiable car :
 Elle utilise l'API officielle de Direct Upload (v2)
-Elle permet de gérer les gros fichiers
-Elle gère automatiquement les timeouts et les retries
-Elle permet d'ajouter des métadonnées au fichier
-Essayez maintenant d'uploader une image, cela devrait fonctionner correctement.
-
-
-La seule différence est que dans notre cas, nous devons convertir le File en ArrayBuffer car requestUrl d'Obsidian ne peut pas gérer directement un File comme corps de la requête.
-
+   Elle permet de gérer les gros fichiers
+   Elle gère automatiquement les timeouts et les retries
+   Elle permet d'ajouter des métadonnées au fichier
 
 ## Picgo
 
+   PicGo est un outil spécialisé pour l'upload d'images qui offre :
+
+   1. **Fonctionnalités principales** :
+      - Upload d'images vers différents services (Cloudflare, Imgur, S3, etc.)
+      - Gestion des erreurs et retries
+      - Support de multiples formats d'images
+      - Transformation d'images
+
+   2. **Deux versions** :
+      - PicGo (GUI) : Application desktop avec interface graphique
+      - PicGo-core : Version Node.js utilisable comme bibliothèque
+
+   3. **Avantages pour Obsidian** :
+      - Gère automatiquement les problèmes de CORS
+      - Compatible avec l'environnement Electron
+      - Supporte de nombreux services d'hébergement
+      - Communauté active et nombreux plugins
+
+   4. **Services supportés** :
+      - Cloudflare Images
+      - GitHub
+      - Imgur
+      - S3
+      - Azure
+      - Et bien d'autres...
+
+   C'est une solution populaire dans l'écosystème Obsidian car elle résout beaucoup de problèmes techniques (comme le CORS) que nous rencontrons actuellement.
+
+   Voulez-vous que nous l'intégrions dans notre plugin ?
+
+   Je vois que vous voulez comprendre comment le plugin utilise PicGo. Voici ce que j'ai trouvé :
+
+   Le plugin utilise PicGo-core, qui est une version Node.js de PicGo. L'avantage de PicGo est qu'il :
+
+   1. Gère nativement les problèmes de CORS
+   2. Supporte de nombreux services d'hébergement d'images
+   3. Fonctionne bien dans l'environnement Electron d'Obsidian
+
+   Pour l'utiliser dans notre plugin, nous devrions :
+
+   1. Installer PicGo-core :
+   ```typescript
+   import picgo from 'picgo'
+   ```
+
+   2. Configurer l'uploader :
+   ```typescript
+   const PicGo = new picgo()
+   PicGo.setConfig({
+   'picBed': {
+      'uploader': 'cloudflare',
+      'cloudflare': {
+         'token': settings.imagesToken,
+         'accountId': settings.accountId
+      }
+   }
+   })
+   ```
+
+   3. Utiliser pour l'upload :
+   ```typescript
+   const result = await PicGo.upload([file])
+   ```
+
+   Voulez-vous que j'implémente cette solution avec PicGo dans notre service CloudflareMediaService ?
+   ## roadmap
+
+   ### toolkit
+   
+   ####  obsidian://show-plugin?id=obsidian-image-toolkit
 
 
-PicGo est un outil spécialisé pour l'upload d'images qui offre :
+   Copy an image
+fullscreen 
 
-1. **Fonctionnalités principales** :
-   - Upload d'images vers différents services (Cloudflare, Imgur, S3, etc.)
-   - Gestion des erreurs et retries
-   - Support de multiples formats d'images
-   - Transformation d'images
+   After clicking the image, the image will be popped up with transparent mask layer on the background
+   You can only click and preview one image at a time
+   You cannot edit and look through your notes, or other operations except to view and operate the image in the Normal Mode
+   Gallery Navbar:
 
-2. **Deux versions** :
-   - PicGo (GUI) : Application desktop avec interface graphique
-   - PicGo-core : Version Node.js utilisable comme bibliothèque
+   All the images in the current note will be displayed at the bottom, and you can switch these thumbs to view any image
+   To be able to use this functionality, you need to turn on 'display gallery navbar' on the plugin settings page
+   The background color of the gallery navbar and the border color the selected image can be set on the plugin settings page
+   Exit:
 
-3. **Avantages pour Obsidian** :
-   - Gère automatiquement les problèmes de CORS
-   - Compatible avec l'environnement Electron
-   - Supporte de nombreux services d'hébergement
-   - Communauté active et nombreux plugins
+   Click the outside of the image
+   Press Esc
+   If it's in full-screen mode, you need to exit full-screen mode firstly, then exit the image preview page and close popup layer.
 
-4. **Services supportés** :
-   - Cloudflare Images
-   - GitHub
-   - Imgur
-   - S3
-   - Azure
-   - Et bien d'autres...
+   Move the image:
 
-C'est une solution populaire dans l'écosystème Obsidian car elle résout beaucoup de problèmes techniques (comme le CORS) que nous rencontrons actuellement.
+   Put your mouse cursor on the image, and directly drag the image to move
+   Press configured arrow keys to move the image
+   If you set modifier keys (Ctrl, Alt, Shift) for moving the image, you need to hold the modifier keys and press arrow keys at the same time.
 
-Voulez-vous que nous l'intégrions dans notre plugin ?
+   Pin Mode
+   When you turn on 'Pin an image' on the settings page, it's in Pin Mode.
 
-Je vois que vous voulez comprendre comment le plugin utilise PicGo. Voici ce que j'ai trouvé :
+   pin_mode_screenshot
 
-Le plugin utilise PicGo-core, qui est une version Node.js de PicGo. L'avantage de PicGo est qu'il :
+   Rule:
 
-1. Gère nativement les problèmes de CORS
-2. Supporte de nombreux services d'hébergement d'images
-3. Fonctionne bien dans l'environnement Electron d'Obsidian
+   You can click and popped up 1 to 5 images at a time
+   Comparing with normal mode, the image will be popped up without mask layer after clicking the image
+   It's allowed to edit and look through your notes while images are being popped up and previewed
+   Menu:
 
-Pour l'utiliser dans notre plugin, nous devrions :
+   When you right click on the popped image, it will show the menu at the right side of your cursor. The menu contains several functions, like zoom, full screen, refresh, rotate, flip, copy, close, etc.
+   Exit:
 
-1. Installer PicGo-core :
-```typescript
-import picgo from 'picgo'
-```
+   Press Esc to close the image where your mouse cursor is hovering
+   click 'close' button in the menu
+   Move the image:
 
-2. Configurer l'uploader :
-```typescript
-const PicGo = new picgo()
-PicGo.setConfig({
-  'picBed': {
-    'uploader': 'cloudflare',
-    'cloudflare': {
-      'token': settings.imagesToken,
-      'accountId': settings.accountId
-    }
-  }
-})
-```
+   Put your mouse cursor on the image, and directly drag the image to move
 
-3. Utiliser pour l'upload :
-```typescript
-const result = await PicGo.upload([file])
-```
+   #### text extractor
+   obsidian://show-plugin?id=text-extractor
+   #### image auto upload
 
-Voulez-vous que j'implémente cette solution avec PicGo dans notre service CloudflareMediaService ?
-## roadmap
+   Obsidian Image Auto Upload Plugin
+   This is a tool that supports uploading images to image beds using PicGo, PicList, and PicGo-Core.
+   Remember to restart Obsidian after updating the plugin.
 
-### toolkit
- 
-####  obsidian://show-plugin?id=obsidian-image-toolkit
+   Not tested on Mac
 
+   Start
+   Install the PicGo tool and configure it, refer to the official website
+   Enable PicGo's Server service and remember the port number
+   Install the plugin
+   Open the plugin settings and set it to http://127.0.0.1:{{port set in PicGo}}/upload (e.g., http://127.0.0.1:36677/upload)
+   Try to see if the upload is successful
+   Set picbed and configName
+   If you are using PicList (version >= 2.5.3), you can set the picbed and configName through URL parameters.
+   Example: http://127.0.0.1:36677/upload?picbed=smms&configName=piclist
+   This will upload the image to the smms picbed and use the piclist configName.
+   Using this feature, you can upload images to different picbeds in different Obsidian vaults.
 
-When you click an image, it will be popped up and you can preview, zoom, move, rotate, flip, invert and copy the image.
+   Features
+   Upload when paste image
+   When you paste an image to Obsidian, this plugin will automatically upload your image.
 
+   You can set image-auto-upload: false in frontmatter to control one file.
 
-Zoom in or out an image by mouse wheel or clicking toolbar zoom icons
-Move an image by dragging mouse cursor or pressing keyboard arrow keys
-Preview an image in full-screen mode
-Rotate or flip an image by clicking footer toolbar icons
-Invert the color of an image
-Copy an image
-Rule:
+   Supports ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".tiff", ".webp", ".avif"
 
-After clicking the image, the image will be popped up with transparent mask layer on the background
-You can only click and preview one image at a time
-You cannot edit and look through your notes, or other operations except to view and operate the image in the Normal Mode
-Gallery Navbar:
+   Due to the bug in PicGo 2.3.0-beta7, you cannot use this feature. Please install another version of PicGo.
 
-All the images in the current note will be displayed at the bottom, and you can switch these thumbs to view any image
-To be able to use this functionality, you need to turn on 'display gallery navbar' on the plugin settings page
-The background color of the gallery navbar and the border color the selected image can be set on the plugin settings page
-Exit:
+   ---
+   image-auto-upload: true
+   ---
+   Upload all local images file by command
+   press ctrl+P and input upload all images，enter, then will auto upload all local images
 
-Click the outside of the image
-Press Esc
-If it's in full-screen mode, you need to exit full-screen mode firstly, then exit the image preview page and close popup layer.
+   download all internet to local
+   press ctrl+P and input download all images，enter, then will auto download all internet images to loacl, only test in win10
 
-Move the image:
+   Upload image by contextMenu
+   Now you can upload image by contextMenu in edit mode.
 
-Put your mouse cursor on the image, and directly drag the image to move
-Press configured arrow keys to move the image
-If you set modifier keys (Ctrl, Alt, Shift) for moving the image, you need to hold the modifier keys and press arrow keys at the same time.
+   Support drag-and-drop
+   Only work for picgo or picList app.
 
-Pin Mode
-When you turn on 'Pin an image' on the settings page, it's in Pin Mode.
+   server mode
+   You can deploy PicList or PicList-Core in your server and upload to it.
 
-pin_mode_screenshot
+   Support PicList 2.6.3 later or PicList-Core1.3.0 later
 
-Rule:
+   You can not upload network in this mode.
+   If you upload fail when you paste img, you can alse try to enable the mode.
 
-You can click and popped up 1 to 5 images at a time
-Comparing with normal mode, the image will be popped up without mask layer after clicking the image
-It's allowed to edit and look through your notes while images are being popped up and previewed
-Menu:
-
-When you right click on the popped image, it will show the menu at the right side of your cursor. The menu contains several functions, like zoom, full screen, refresh, rotate, flip, copy, close, etc.
-Exit:
-
-Press Esc to close the image where your mouse cursor is hovering
-click 'close' button in the menu
-Move the image:
-
-Put your mouse cursor on the image, and directly drag the image to move
-
-#### text extractor
-obsidian://show-plugin?id=text-extractor
-#### image auto upload
-
-Obsidian Image Auto Upload Plugin
-This is a tool that supports uploading images to image beds using PicGo, PicList, and PicGo-Core.
-Remember to restart Obsidian after updating the plugin.
-
-Not tested on Mac
-
-Start
-Install the PicGo tool and configure it, refer to the official website
-Enable PicGo's Server service and remember the port number
-Install the plugin
-Open the plugin settings and set it to http://127.0.0.1:{{port set in PicGo}}/upload (e.g., http://127.0.0.1:36677/upload)
-Try to see if the upload is successful
-Set picbed and configName
-If you are using PicList (version >= 2.5.3), you can set the picbed and configName through URL parameters.
-Example: http://127.0.0.1:36677/upload?picbed=smms&configName=piclist
-This will upload the image to the smms picbed and use the piclist configName.
-Using this feature, you can upload images to different picbeds in different Obsidian vaults.
-
-Features
-Upload when paste image
-When you paste an image to Obsidian, this plugin will automatically upload your image.
-
-You can set image-auto-upload: false in frontmatter to control one file.
-
-Supports ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".tiff", ".webp", ".avif"
-
-Due to the bug in PicGo 2.3.0-beta7, you cannot use this feature. Please install another version of PicGo.
-
----
-image-auto-upload: true
----
-Upload all local images file by command
-press ctrl+P and input upload all images，enter, then will auto upload all local images
-
-download all internet to local
-press ctrl+P and input download all images，enter, then will auto download all internet images to loacl, only test in win10
-
-Upload image by contextMenu
-Now you can upload image by contextMenu in edit mode.
-
-Support drag-and-drop
-Only work for picgo or picList app.
-
-server mode
-You can deploy PicList or PicList-Core in your server and upload to it.
-
-Support PicList 2.6.3 later or PicList-Core1.3.0 later
-
-You can not upload network in this mode.
-If you upload fail when you paste img, you can alse try to enable the mode.
-
-Support picgo-core
-You can install picgo-core with npm. Reference to doc
+   Support picgo-core
+   You can install picgo-core with npm. Reference to doc
 
 
 #### obsidian://show-plugin?id=mousewheel-image-zoom

@@ -21,8 +21,8 @@ interface ICloudflareSettings {
  */
 export class CloudflareMediaService extends AbstractMediaUploadService {
     private static instance: CloudflareMediaService;
-    private settings?: ICloudflareSettings;
-    private boundHandleSettingsUpdate: EventCallback<EventName.SETTINGS_UPDATED>;
+    private settings: ICloudflareSettings | undefined;
+    private boundHandleSettingsUpdate: (data: { settings: IPluginSettings }) => void;
     private picgo?: PicGoService;
     private isProcessingSettings = false;
     private isProcessingUpload = false;
@@ -32,7 +32,13 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
     private constructor() {
         super();
         this.boundHandleSettingsUpdate = this.handleSettingsUpdate.bind(this);
-        this.initializeEventListeners();
+        this.eventBus.on(EventName.SETTINGS_UPDATED, this.boundHandleSettingsUpdate);
+        
+        // Initialiser les paramètres au démarrage
+        const currentSettings = this.settingsService.getSettings();
+        if (currentSettings.cloudflare) {
+            this.settings = currentSettings.cloudflare;
+        }
     }
 
     /**
@@ -47,37 +53,18 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
     }
 
     /**
-     * Initialise les écouteurs d'événements du service
-     * @private
-     */
-    private initializeEventListeners(): void {
-        const eventBus = EventBusService.getInstance();
-        eventBus.on(EventName.SETTINGS_UPDATED, this.boundHandleSettingsUpdate);
-    }
-
-    /**
      * Gère la mise à jour des paramètres du service
      * @param {Object} data - Les données de mise à jour
      * @param {IPluginSettings} data.settings - Les nouveaux paramètres
      * @private
      */
-    private handleSettingsUpdate(data: { settings: IPluginSettings }): void {
-        if (this.isProcessingSettings) return;
-        this.isProcessingSettings = true;
-
-        try {
-            if (data.settings.service !== 'cloudflare') {
-                this.settings = undefined;
-                return;
-            }
-            
-            this.settings = data.settings.cloudflare;
-            
-            if (this.settings) {
-                this.setupPicGo();
-            }
-        } finally {
-            this.isProcessingSettings = false;
+    private handleSettingsUpdate({ settings }: { settings: IPluginSettings }): void {
+        if (settings.cloudflare) {
+            this.settings = settings.cloudflare;
+            console.log('[CloudflareMediaService] Paramètres mis à jour:', {
+                hasAccountId: !!this.settings.accountId,
+                hasToken: !!this.settings.imagesToken
+            });
         }
     }
 
@@ -140,7 +127,7 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
      */
     private formatImageUrl(baseUrl: string, variant?: string): string {
         if (!this.settings?.accountId || !this.settings?.deliveryHash) {
-            throw new Error('Configuration Cloudflare manquante');
+            throw new Error('Configuration Cloudflare incomplète : le hash de livraison est manquant');
         }
 
         const imageId = baseUrl.split('/').pop() || '';

@@ -41,6 +41,8 @@ export interface ICloudflareSettings {
     accountId: string;
     /** Token API pour Cloudflare Images et Stream */
     imagesToken: string;
+    /** Hash de livraison pour les URLs d'images */
+    deliveryHash?: string;
     /** Variant par défaut pour les images */
     defaultVariant?: string;
     /** Domaine personnalisé */
@@ -61,7 +63,7 @@ export enum SupportedService {
  */
 export interface IPluginSettings {
     /** Service actif */
-    service?: SupportedService;
+    service: 'cloudflare' | 'cloudinary' | 'twicpics';
     /** Configuration Cloudinary */
     cloudinary?: ICloudinarySettings;
     /** Configuration TwicPics */
@@ -70,11 +72,19 @@ export interface IPluginSettings {
     cloudflare?: ICloudflareSettings;
     /** Liste des dossiers à ignorer */
     ignoredFolders: string[];
+    /** Barre d'outils */
+    showImageToolbar: boolean;
 }
 
 /**
  * Structure minimale des paramètres initiaux
  */
 export const DEFAULT_SETTINGS: IPluginSettings = {
-    ignoredFolders: []
+    service: 'cloudflare',
+    ignoredFolders: [],
+    showImageToolbar: true,
+    cloudflare: {
+        accountId: '',
+        imagesToken: ''
+    }
 }; 

@@ -7,6 +7,7 @@ const fr = {
     // Paramètres généraux
     'settings.title': 'Paramètres MediaFlowz',
     'settings.service': 'Service',
+    'settings.service.title': 'Configuration du service',
     'settings.serviceDesc': 'Choisissez le service que vous souhaitez utiliser pour héberger vos médias.',
     'settings.selectService': 'Sélectionnez un service...',
 
@@ -31,6 +32,8 @@ const fr = {
     'settings.twicpics.domainDesc': 'Votre domaine TwicPics (ex: your-workspace.twicpics.com)',
     'settings.twicpics.path': 'Chemin',
     'settings.twicpics.pathDesc': 'Chemin de base pour vos médias (ex: /obsidian)',
+    'settings.twicpics.apiKey': 'Clé API TwicPics',
+    'settings.twicpics.apiKeyDesc': 'Votre clé API TwicPics (trouvable dans les paramètres de votre compte)',
 
     // Paramètres Cloudflare
     'settings.cloudflare.title': 'Configuration Cloudflare',
@@ -69,14 +72,24 @@ const fr = {
     'settings.ignoredFolders.title': 'Dossiers ignorés',
     'settings.ignoredFolders.add': 'Ajouter un dossier',
     'settings.ignoredFolders.addDesc': 'Les médias dans ces dossiers ne seront pas uploadés automatiquement.',
-    'settings.ignoredFolders.placeholder': 'Chemin du dossier (ex: Templates)',
+    'settings.ignoredFolders.select': 'Sélectionner un dossier...',
     'settings.ignoredFolders.remove': 'Supprimer ce dossier',
+    'settings.ignoredFolders.noFolders': 'Aucun dossier ignoré',
+    'settings.ignoredFolders.selectFolder': 'Sélectionner un dossier',
+    'settings.ignoredFolders.folderAdded': 'Dossier ajouté aux dossiers ignorés',
+    'settings.ignoredFolders.folderRemoved': 'Dossier retiré des dossiers ignorés',
+
+    // Features
+    'settings.features.title': 'Fonctionnalités',
+    'settings.features.imageToolbar.name': 'Barre d\'outils image',
+    'settings.features.imageToolbar.desc': 'Affiche une barre d\'outils au survol des images pour accéder rapidement aux actions courantes'
 };
 
 const en = {
     // General settings
     'settings.title': 'MediaFlowz Settings',
     'settings.service': 'Service',
+    'settings.service.title': 'Service Configuration',
     'settings.serviceDesc': 'Choose the service you want to use to host your media.',
     'settings.selectService': 'Select a service...',
 
@@ -101,6 +114,8 @@ const en = {
     'settings.twicpics.domainDesc': 'Your TwicPics domain (e.g. your-workspace.twicpics.com)',
     'settings.twicpics.path': 'Path',
     'settings.twicpics.pathDesc': 'Base path for your media (e.g. /obsidian)',
+    'settings.twicpics.apiKey': 'TwicPics API Key',
+    'settings.twicpics.apiKeyDesc': 'Your TwicPics API key (found in your account settings)',
 
     // Cloudflare settings
     'settings.cloudflare.title': 'Cloudflare Configuration',
@@ -150,8 +165,17 @@ const en = {
     'settings.ignoredFolders.title': 'Ignored Folders',
     'settings.ignoredFolders.add': 'Add folder',
     'settings.ignoredFolders.addDesc': 'Media in these folders will not be automatically uploaded.',
-    'settings.ignoredFolders.placeholder': 'Folder path (e.g. Templates)',
+    'settings.ignoredFolders.select': 'Select a folder...',
     'settings.ignoredFolders.remove': 'Remove this folder',
+    'settings.ignoredFolders.noFolders': 'No ignored folders',
+    'settings.ignoredFolders.selectFolder': 'Select a folder',
+    'settings.ignoredFolders.folderAdded': 'Folder added to ignored folders',
+    'settings.ignoredFolders.folderRemoved': 'Folder removed from ignored folders',
+
+    // Features
+    'settings.features.title': 'Features',
+    'settings.features.imageToolbar.name': 'Image Toolbar',
+    'settings.features.imageToolbar.desc': 'Displays a toolbar at the hover of images for quick access to common actions'
 };
 
 export const translations: Translations = { fr, en };

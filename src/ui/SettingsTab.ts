@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, Menu, TFolder } from 'obsidian';
 import MediaFlowzPlugin from '../main';
 import { getTranslation } from '../i18n/translations';
 import { SupportedService } from '../core/types/settings';
@@ -28,6 +28,20 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
             ? `${getTranslation('settings.title')} - ${this.plugin.settings.service.charAt(0).toUpperCase() + this.plugin.settings.service.slice(1)}`
             : getTranslation('settings.title');
         containerEl.createEl('h2', { text: titleText });
+
+        // Section des fonctionnalités
+        containerEl.createEl('h3', { text: getTranslation('settings.features.title') });
+        
+        new Setting(containerEl)
+            .setName(getTranslation('settings.features.imageToolbar.name'))
+            .setDesc(getTranslation('settings.features.imageToolbar.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showImageToolbar)
+                .onChange(async (value) => {
+                    this.plugin.settings.showImageToolbar = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
         // Section de sélection du service
         const serviceSection = containerEl.createDiv('service-section');
@@ -120,56 +134,7 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
         }
 
         // Section des dossiers ignorés
-        const ignoredFoldersSection = containerEl.createDiv('ignored-folders-section');
-        ignoredFoldersSection.createEl('h3', { text: getTranslation('settings.ignoredFolders.title') });
-
-        const ignoredFoldersList = ignoredFoldersSection.createEl('div', { cls: 'ignored-folders-list' });
-
-        // Afficher la liste des dossiers ignorés
-        this.plugin.settings.ignoredFolders.forEach((folder, index) => {
-            const folderDiv = ignoredFoldersList.createEl('div', { cls: 'ignored-folder-item' });
-            
-            new Setting(folderDiv)
-                .setName(folder)
-                .addButton(button => button
-                    .setIcon('trash')
-                    .setTooltip(getTranslation('settings.ignoredFolders.remove'))
-                    .onClick(async () => {
-                        const newIgnoredFolders = [...this.plugin.settings.ignoredFolders];
-                        newIgnoredFolders.splice(index, 1);
-                        await this.updateSettings({
-                            ignoredFolders: newIgnoredFolders
-                        });
-                        this.display();
-                    }));
-        });
-
-        // Bouton pour ajouter un nouveau dossier
-        new Setting(ignoredFoldersSection)
-            .setName(getTranslation('settings.ignoredFolders.add'))
-            .setDesc(getTranslation('settings.ignoredFolders.addDesc'))
-            .addText(text => text
-                .setPlaceholder(getTranslation('settings.ignoredFolders.placeholder'))
-                .onChange(() => {
-                    // Ne rien faire pendant la saisie
-                })
-                .then(textComponent => {
-                    // Ajouter un gestionnaire d'événement pour la touche Entrée
-                    const inputEl = textComponent.inputEl;
-                    inputEl.addEventListener('keydown', async (e) => {
-                        if (e.key === 'Enter') {
-                            const value = inputEl.value;
-                            if (value && !this.plugin.settings.ignoredFolders.includes(value)) {
-                                const newIgnoredFolders = [...this.plugin.settings.ignoredFolders, value];
-                                await this.updateSettings({
-                                    ignoredFolders: newIgnoredFolders
-                                });
-                                this.display();
-                                inputEl.value = '';
-                            }
-                        }
-                    });
-                }));
+        this.displayIgnoredFoldersSection(containerEl);
     }
 
     private async updateSettings(newSettings: Partial<typeof this.plugin.settings>): Promise<void> {
@@ -382,6 +347,171 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                             streamToken: value
                         }
                     });
+                }));
+    }
+
+    // Récupérer tous les dossiers du vault de manière hiérarchique
+    private getAllFolders(): { [key: string]: TFolder } {
+        const folderMap: { [key: string]: TFolder } = {};
+        const vault = this.app.vault;
+        
+        // Fonction récursive pour parcourir les dossiers
+        const traverse = (folder: TFolder) => {
+            const path = folder.path;
+            if (path !== '/') {
+                folderMap[path] = folder;
+            }
+            
+            folder.children
+                .filter((child): child is TFolder => child instanceof TFolder)
+                .forEach(traverse);
+        };
+
+        // Commencer la traversée depuis la racine
+        traverse(vault.getRoot());
+        return folderMap;
+    }
+
+    // Construire le menu hiérarchique des dossiers
+    private buildFolderMenu(menu: Menu, folder: TFolder, level: number = 0) {
+        const subFolders = folder.children.filter((child): child is TFolder => child instanceof TFolder);
+        
+        subFolders.forEach(subFolder => {
+            const hasChildren = subFolder.children.some(child => child instanceof TFolder);
+            
+            if (hasChildren) {
+                // Pour les dossiers avec des enfants, créer un sous-menu
+                menu.addItem(item => {
+                    const titleEl = createSpan({ cls: 'menu-item-title' });
+                    titleEl.appendText(subFolder.name);
+                    titleEl.appendChild(createSpan({ cls: 'menu-item-arrow', text: ' →' }));
+
+                    item.dom.querySelector('.menu-item-title')?.replaceWith(titleEl);
+                    item.setIcon('folder');
+
+                    // Créer le sous-menu
+                    const subMenu = new Menu();
+                    this.buildFolderMenu(subMenu, subFolder, level + 1);
+
+                    // Configurer l'événement de survol
+                    const itemDom = (item as any).dom as HTMLElement;
+                    if (itemDom) {
+                        let isOverItem = false;
+                        let isOverMenu = false;
+                        let hideTimeout: NodeJS.Timeout;
+
+                        const showSubMenu = () => {
+                            const rect = itemDom.getBoundingClientRect();
+                            subMenu.showAtPosition({
+                                x: rect.right,
+                                y: rect.top
+                            });
+                        };
+
+                        const hideSubMenu = () => {
+                            hideTimeout = setTimeout(() => {
+                                if (!isOverItem && !isOverMenu) {
+                                    subMenu.hide();
+                                }
+                            }, 100);
+                        };
+
+                        itemDom.addEventListener('mouseenter', () => {
+                            isOverItem = true;
+                            if (hideTimeout) clearTimeout(hideTimeout);
+                            showSubMenu();
+                        });
+
+                        itemDom.addEventListener('mouseleave', () => {
+                            isOverItem = false;
+                            hideSubMenu();
+                        });
+
+                        // Gérer le survol du sous-menu lui-même
+                        const subMenuEl = (subMenu as any).dom;
+                        if (subMenuEl) {
+                            subMenuEl.addEventListener('mouseenter', () => {
+                                isOverMenu = true;
+                                if (hideTimeout) clearTimeout(hideTimeout);
+                            });
+
+                            subMenuEl.addEventListener('mouseleave', () => {
+                                isOverMenu = false;
+                                hideSubMenu();
+                            });
+                        }
+                    }
+
+                    // Ajouter également un gestionnaire de clic pour le dossier parent
+                    item.onClick(async () => {
+                        if (!this.plugin.settings.ignoredFolders.includes(subFolder.path)) {
+                            const newIgnoredFolders = [...this.plugin.settings.ignoredFolders, subFolder.path];
+                            await this.updateSettings({
+                                ignoredFolders: newIgnoredFolders
+                            });
+                            this.display();
+                        }
+                    });
+                });
+            } else {
+                // Pour les dossiers sans enfants, ajouter simplement un élément de menu
+                menu.addItem(item => {
+                    item.setTitle(subFolder.name)
+                        .setIcon('folder')
+                        .onClick(async () => {
+                            if (!this.plugin.settings.ignoredFolders.includes(subFolder.path)) {
+                                const newIgnoredFolders = [...this.plugin.settings.ignoredFolders, subFolder.path];
+                                await this.updateSettings({
+                                    ignoredFolders: newIgnoredFolders
+                                });
+                                this.display();
+                            }
+                        });
+                });
+            }
+        });
+    }
+
+    // Section des dossiers ignorés
+    private displayIgnoredFoldersSection(containerEl: HTMLElement): void {
+        const ignoredFoldersSection = containerEl.createDiv('ignored-folders-section');
+        ignoredFoldersSection.createEl('h3', { text: getTranslation('settings.ignoredFolders.title') });
+
+        // Liste des dossiers ignorés actuels
+        const ignoredFoldersList = ignoredFoldersSection.createEl('div', { cls: 'ignored-folders-list' });
+        this.plugin.settings.ignoredFolders.forEach((folder, index) => {
+            const folderDiv = ignoredFoldersList.createEl('div', { cls: 'ignored-folder-item' });
+            
+            new Setting(folderDiv)
+                .setName(folder)
+                .addButton(button => button
+                    .setIcon('trash')
+                    .setTooltip(getTranslation('settings.ignoredFolders.remove'))
+                    .onClick(async () => {
+                        const newIgnoredFolders = [...this.plugin.settings.ignoredFolders];
+                        newIgnoredFolders.splice(index, 1);
+                        await this.updateSettings({
+                            ignoredFolders: newIgnoredFolders
+                        });
+                        this.display();
+                    }));
+        });
+
+        // Bouton pour ajouter un nouveau dossier
+        new Setting(ignoredFoldersSection)
+            .setName(getTranslation('settings.ignoredFolders.add'))
+            .setDesc(getTranslation('settings.ignoredFolders.addDesc'))
+            .addButton(button => button
+                .setButtonText(getTranslation('settings.ignoredFolders.select'))
+                .onClick((e: MouseEvent) => {
+                    // Créer le menu de sélection principal
+                    const menu = new Menu();
+                    
+                    // Construire la hiérarchie des dossiers à partir de la racine
+                    this.buildFolderMenu(menu, this.app.vault.getRoot());
+
+                    // Afficher le menu à la position du clic
+                    menu.showAtMouseEvent(e);
                 }));
     }
 } 
