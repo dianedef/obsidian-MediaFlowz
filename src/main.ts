@@ -60,15 +60,26 @@ export default class MediaFlowzPlugin extends Plugin {
 
         this.registerEvent(
             this.app.workspace.on('editor-paste', async (evt: ClipboardEvent, editor: Editor) => {
-                if (this.processingLock.paste) {
-                    console.log('⚠️ Un paste est déjà en cours, ignoré');
-                    evt.preventDefault();
-                    evt.stopPropagation();
+                const files = evt.clipboardData?.files;
+                if (!files?.length) return;
+
+                const activeFile = this.app.workspace.getActiveFile();
+                if (!activeFile) {
+                    console.log('⚠️ Pas de fichier actif');
                     return;
                 }
 
-                const files = evt.clipboardData?.files;
-                if (!files?.length) return;
+                // Vérifier si le fichier actif est dans un dossier ignoré
+                const isIgnored = this.settings.ignoredFolders.some(folder => {
+                    const normalizedFolder = folder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+                    const normalizedPath = activeFile.path.replace(/\\/g, '/');
+                    return normalizedPath.startsWith(normalizedFolder + '/') || normalizedPath === normalizedFolder;
+                });
+
+                if (isIgnored) {
+                    console.log('📝 Note dans un dossier ignoré, comportement par défaut');
+                    return; // Laisser Obsidian gérer le collage normalement
+                }
 
                 try {
                     this.processingLock.paste = true;
@@ -79,12 +90,6 @@ export default class MediaFlowzPlugin extends Plugin {
                     // Empêcher le comportement par défaut d'Obsidian
                     evt.preventDefault();
                     evt.stopPropagation();
-
-                    const activeFile = this.app.workspace.getActiveFile();
-                    if (!activeFile) {
-                        console.log('⚠️ Pas de fichier actif');
-                        return;
-                    }
 
                     console.log('📋 Fichiers détectés dans le presse-papier:', {
                         count: files.length,

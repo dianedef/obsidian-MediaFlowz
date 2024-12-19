@@ -366,8 +366,7 @@ PicGo :
 The plugin finds all links to external images in your notes, downloads and saves images locally and finally adjusts the link in your note to point to the local image files.
 
 
-You can exclude folders, from which you don't want images to be removed during the scan. In case there are multiple folders to be excluded, you can divide them by comma. Please ensure you provide the full path in Vault:
-You can now exclude all subfolders under the folder paths provided above:
+
 
 
 mousewheel image zoom
