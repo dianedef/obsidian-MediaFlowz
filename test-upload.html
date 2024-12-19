@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Upload Cloudflare</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Test Upload Cloudflare Images</h2>
+        
+        <div class="form-group">
+            <label for="accountId">Account ID:</label>
+            <input type="text" id="accountId" placeholder="Votre Account ID Cloudflare">
+        </div>
+
+        <div class="form-group">
+            <label for="token">API Token:</label>
+            <input type="text" id="token" placeholder="Votre Token API Cloudflare">
+        </div>
+
+        <div class="form-group">
+            <label for="fileInput">Fichier:</label>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <button onclick="uploadFile()">Upload</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
+            const accountId = document.getElementById('accountId').value;
+            const token = document.getElementById('token').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!file || !accountId || !token) {
+                resultDiv.innerHTML = 'Erreur: Veuillez remplir tous les champs';
+                return;
+            }
+
+            resultDiv.innerHTML = 'Upload en cours...\n';
+            resultDiv.innerHTML += `Type de fichier: ${file.type}\n`;
+            resultDiv.innerHTML += `Taille du fichier: ${file.size} bytes\n`;
+            resultDiv.innerHTML += `Nom du fichier: ${file.name}\n\n`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('accountId', accountId);
+                formData.append('token', token);
+
+                resultDiv.innerHTML += 'Envoi de la requête via le proxy...\n';
+                
+                console.log('Début de la requête fetch vers le proxy');
+                const response = await fetch('http://localhost:3000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Réponse reçue:', response);
+                resultDiv.innerHTML += `Status: ${response.status} ${response.statusText}\n`;
+                resultDiv.innerHTML += 'Headers de réponse:\n';
+                for (let [key, value] of response.headers) {
+                    resultDiv.innerHTML += `${key}: ${value}\n`;
+                }
+                resultDiv.innerHTML += '\n';
+                
+                const data = await response.json();
+                console.log('Données reçues:', data);
+                resultDiv.innerHTML += 'Réponse:\n' + JSON.stringify(data, null, 2);
+
+                if (data.success) {
+                    const imageUrl = `https://imagedelivery.net/${accountId}/${data.result.id}/public`;
+                    resultDiv.innerHTML += '\n\nURL de l\'image:\n' + imageUrl;
+                }
+            } catch (error) {
+                console.error('Erreur complète:', error);
+                resultDiv.innerHTML += '\nErreur détaillée:\n';
+                resultDiv.innerHTML += `Nom de l'erreur: ${error.name}\n`;
+                resultDiv.innerHTML += `Message: ${error.message}\n`;
+                resultDiv.innerHTML += `Stack: ${error.stack || 'Non disponible'}\n`;
+                
+                // Ajout de toutes les propriétés de l'erreur
+                resultDiv.innerHTML += '\nPropriétés supplémentaires de l\'erreur:\n';
+                for (let prop in error) {
+                    resultDiv.innerHTML += `${prop}: ${error[prop]}\n`;
+                }
+
+                if (error instanceof Response) {
+                    resultDiv.innerHTML += `\nStatus: ${error.status}\n`;
+                    resultDiv.innerHTML += `StatusText: ${error.statusText}\n`;
+                    error.text().then(text => {
+                        resultDiv.innerHTML += `Body: ${text}\n`;
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

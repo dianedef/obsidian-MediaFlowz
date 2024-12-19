@@ -177,37 +177,15 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
             // Ne garder que les paramètres du service actif
             const service = newSettings.service || this.plugin.settings.service;
             const mergedSettings = {
-                ...this.plugin.settings,
-                ...newSettings,
-                // Supprimer les paramètres des autres services
-                cloudinary: undefined,
-                twicpics: undefined,
-                cloudflare: undefined
+                ...this.plugin.settings,  // Garder les paramètres existants
+                ...newSettings  // Appliquer les nouveaux paramètres
             };
-
-            // Si un service est sélectionné, initialiser ses paramètres
-            if (service) {
-                switch (service) {
-                    case SupportedService.CLOUDINARY:
-                        mergedSettings.cloudinary = this.plugin.settings.cloudinary || {};
-                        break;
-                    case SupportedService.TWICPICS:
-                        mergedSettings.twicpics = this.plugin.settings.twicpics || {};
-                        break;
-                    case SupportedService.CLOUDFLARE:
-                        mergedSettings.cloudflare = this.plugin.settings.cloudflare || {};
-                        break;
-                }
-            }
-
-            // Mettre à jour les paramètres dans le service sans validation
-            await this.settingsService.updateSettings(mergedSettings, false);
-
-            // Mettre à jour les paramètres du plugin
-            this.plugin.settings = mergedSettings;
 
             // Sauvegarder les paramètres sur le disque
             await this.plugin.saveData(mergedSettings);
+
+            // Mettre à jour les paramètres du plugin
+            this.plugin.settings = mergedSettings;
 
             console.log('Settings saved:', mergedSettings);
         } catch (error) {
@@ -373,7 +351,23 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                     });
                 }));
 
-        // API Token unique pour Images et Stream
+        // Hash de livraison
+        new Setting(containerEl)
+            .setName(getTranslation('settings.cloudflare.deliveryHash'))
+            .setDesc(getTranslation('settings.cloudflare.deliveryHashDesc'))
+            .addText(text => text
+                .setPlaceholder('Ex: abcdef123456')
+                .setValue(this.plugin.settings.cloudflare?.deliveryHash ?? '')
+                .onChange(async (value) => {
+                    await this.updateSettings({
+                        cloudflare: {
+                            ...this.plugin.settings.cloudflare,
+                            deliveryHash: value
+                        }
+                    });
+                }));
+
+        // API Token
         new Setting(containerEl)
             .setName(getTranslation('settings.cloudflare.token'))
             .setDesc(getTranslation('settings.cloudflare.tokenDesc'))
@@ -385,16 +379,9 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                         cloudflare: {
                             ...this.plugin.settings.cloudflare,
                             imagesToken: value,
-                            streamToken: value // Le même token pour les deux services
+                            streamToken: value
                         }
                     });
-                }))
-            .addExtraButton(button => button
-                .setIcon('help')
-                .setTooltip('Ce token unique est utilisé à la fois pour Images et Stream. ' +
-                          'Assurez-vous d\'avoir sélectionné les permissions "Images" et "Stream" lors de sa création.')
-                .onClick(() => {
-                    // Optionnel : ajouter une action au clic sur l'aide
                 }));
     }
 } 

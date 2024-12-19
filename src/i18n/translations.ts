@@ -35,16 +35,12 @@ const fr = {
     // Paramètres Cloudflare
     'settings.cloudflare.title': 'Configuration Cloudflare',
     'settings.cloudflare.description': 'Cloudflare Images et Stream permettent de stocker et servir vos médias via le réseau CDN mondial de Cloudflare.',
-    'settings.cloudflare.accountId': 'ID du compte',
-    'settings.cloudflare.accountIdDesc': 'Trouvez votre Account ID dans le Dashboard Cloudflare : ' +
-            'Allez sur dash.cloudflare.com > Cliquez sur le menu en haut à droite > ' +
-            'Accueil du compte > L\'ID est affiché dans le petit menu à droite de votre nom sous "copier l\'ID du compte"',
-
+    'settings.cloudflare.accountId': 'Account ID',
+    'settings.cloudflare.accountIdDesc': 'Votre identifiant de compte Cloudflare (visible dans l\'URL du dashboard)',
+    'settings.cloudflare.deliveryHash': 'Hash de livraison',
+    'settings.cloudflare.deliveryHashDesc': 'Le hash utilisé dans les URLs de vos images (format: imagedelivery.net/[hash]/image/variant)',
     'settings.cloudflare.token': 'Token API',
-    'settings.cloudflare.tokenDesc': 'Token créé dans le Dashboard Cloudflare : ' +
-            'Allez sur dash.cloudflare.com > Cliquez sur le menu en haut à droite > ' +
-            'My Profile > API Tokens > Create Token > ' +
-            'Utilisez le modèle "Cloudflare Images & Stream" avec les permissions de lecture et écriture',
+    'settings.cloudflare.tokenDesc': 'Token API avec les permissions Images et Stream',
 
     // Notifications
     'notices.mediaPasted': '📎 Média détecté...',
@@ -111,6 +107,8 @@ const en = {
     'settings.cloudflare.description': 'Cloudflare Images and Stream allow you to store and serve your media through Cloudflare\'s global CDN.',
     'settings.cloudflare.accountId': 'Account ID',
     'settings.cloudflare.accountIdDesc': 'Your Cloudflare account identifier.',
+    'settings.cloudflare.deliveryHash': 'Delivery Hash',
+    'settings.cloudflare.deliveryHashDesc': 'The hash used in the URLs of your images (format: imagedelivery.net/[hash]/image/variant)',
     'settings.cloudflare.token': 'API Token',
     'settings.cloudflare.tokenDesc': 'Token created in Cloudflare Dashboard: ' +
             'Go to dash.cloudflare.com > Click on the top right menu > ' +

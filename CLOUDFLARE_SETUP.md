@@ -54,6 +54,92 @@
    https://imagedelivery.net/votre-account-hash/image-id/variant
    ```
 
+## Configurer un sous-domaine pour vos images Cloudflare
+
+1. Dans le dashboard Cloudflare :
+   - Allez dans "Websites"
+   - Sélectionnez votre domaine
+   - Allez dans "DNS"
+
+2. Ajoutez un nouvel enregistrement DNS :
+   ```
+   Type: CNAME
+   Name: images (ou le sous-domaine que vous voulez)
+   Target: imagedelivery.net
+   Proxy status: Proxied (activé)
+   ```
+
+
+
+Dans le contexte d'un enregistrement DNS CNAME, le "Target" est l'adresse de destination vers laquelle le sous-domaine va pointer. 
+
+Pour Cloudflare Images, voici comment configurer l'enregistrement CNAME :
+
+1. Dans le dashboard Cloudflare :
+   - Allez dans "Websites"
+   - Sélectionnez votre domaine
+   - Allez dans "DNS"
+   - Cliquez sur "Add record"
+
+2. Configuration :
+   ```
+   Type: CNAME
+   Name: images (ou le sous-domaine que vous souhaitez)
+   Target: imagedelivery.net
+   Proxy status: ✅ Proxied (important d'activer le proxy)
+   TTL: Auto
+   ```
+
+Explication :
+- `Name: images` = créera `images.votredomaine.com`
+- `Target: imagedelivery.net` = redirigera vers le CDN de Cloudflare Images
+- `Proxied: ✅` = active le proxy Cloudflare (nécessaire pour le SSL et la sécurité)
+
+Une fois configuré, vous pourrez utiliser ce sous-domaine dans les paramètres du plugin :
+```typescript
+customDomain: "images.votredomaine.com"
+```
+
+Voulez-vous que je vous aide à configurer cet enregistrement DNS ?
+
+
+
+3. Modifions le code pour utiliser ce sous-domaine :
+
+```:src/core/services/CloudflareMediaService.ts
+
+```
+
+
+
+
+
+
+4. Dans les paramètres du plugin, ajoutez votre sous-domaine :
+   ```typescript
+   customDomain: "images.votredomaine.com"
+   ```
+
+Maintenant, au lieu d'avoir des URLs comme :
+```
+https://imagedelivery.net/votre-account-id/image-id/public
+```
+
+Vous aurez des URLs comme :
+```
+https://images.votredomaine.com/votre-account-id/image-id/public
+```
+
+Avantages de cette approche :
+1. Plus simple à mettre en place (pas besoin de Worker)
+2. Gestion automatique du SSL par Cloudflare
+3. Même performance que l'URL originale
+4. Meilleure image de marque avec votre propre domaine
+
+Voulez-vous que je vous aide à configurer l'enregistrement DNS pour votre sous-domaine ?
+
+
+
 ## Sécurité
 
 - Ne partagez JAMAIS votre jeton API

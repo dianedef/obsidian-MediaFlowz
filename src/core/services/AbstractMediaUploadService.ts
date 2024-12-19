@@ -3,65 +3,54 @@ import { EventBusService } from './EventBusService';
 import { ErrorService, ErrorType } from './ErrorService';
 import { EventName } from '../types/events';
 import { SettingsService } from './SettingsService';
-import { TFile } from 'obsidian';
+import { App } from 'obsidian';
 
 export abstract class AbstractMediaUploadService implements IMediaUploadService {
     protected readonly eventBus: EventBusService;
     protected readonly errorService: ErrorService;
     protected readonly settingsService: SettingsService;
+    protected readonly app: App;
 
     constructor() {
         this.eventBus = EventBusService.getInstance();
         this.errorService = ErrorService.getInstance();
         this.settingsService = SettingsService.getInstance();
+        this.app = (window as any).app;
         this.setupEventListeners();
     }
 
     protected setupEventListeners(): void {
-        this.eventBus.on(EventName.MEDIA_PASTED, async ({ files }) => {
-            await this.handleMediaUpload(files);
+        this.eventBus.on(EventName.MEDIA_PASTED, async (data) => {
+            await this.handleMediaUpload(data);
         });
     }
 
-    /**
-     * Vérifie si un fichier est dans un dossier ignoré
-     * @param filePath Le chemin du fichier à vérifier
-     * @returns true si le fichier est dans un dossier ignoré
-     */
     protected isInIgnoredFolder(filePath: string): boolean {
         const settings = this.settingsService.getSettings();
         if (!settings.ignoredFolders || settings.ignoredFolders.length === 0) {
             return false;
         }
 
-        // Normaliser le chemin pour utiliser des slashes avant
         const normalizedPath = filePath.replace(/\\/g, '/');
         
-        // Vérifier si le chemin commence par un des dossiers ignorés
         return settings.ignoredFolders.some(folder => {
             const normalizedFolder = folder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
             return normalizedPath.startsWith(normalizedFolder + '/') || normalizedPath === normalizedFolder;
         });
     }
 
-    /**
-     * Gère l'upload des fichiers média.
-     * Méthode commune pour tous les services.
-     */
-    protected async handleMediaUpload(files: FileList): Promise<void> {
+    protected async handleMediaUpload(data: { files: FileList | File[] }): Promise<void> {
         if (!this.isConfigured()) {
             this.handleConfigurationError();
             return;
         }
 
-        const mediaFiles = Array.from(files).filter(file => {
-            // Vérifier si c'est un fichier média
+        const mediaFiles = Array.from(data.files).filter(file => {
             if (!this.isMediaFile(file)) {
                 return false;
             }
 
-            // Vérifier si le fichier est dans un dossier ignoré
-            const activeFile = app.workspace.getActiveFile();
+            const activeFile = this.app.workspace.getActiveFile();
             if (activeFile && this.isInIgnoredFolder(activeFile.path)) {
                 console.log(`Fichier ignoré car dans un dossier ignoré: ${activeFile.path}`);
                 return false;
@@ -129,7 +118,6 @@ export abstract class AbstractMediaUploadService implements IMediaUploadService 
         return file.type.startsWith('image/') || file.type.startsWith('video/');
     }
 
-    // Méthodes abstraites à implémenter par les services spécifiques
     abstract upload(file: File, options?: IUploadOptions): Promise<IUploadResponse>;
     abstract delete(publicId: string): Promise<void>;
     abstract getUrl(publicId: string, transformation?: string): string;
