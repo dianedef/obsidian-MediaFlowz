@@ -31,6 +31,12 @@ export class FileNameService {
       return FileNameService.instance;
    }
 
+   public static cleanup(): void {
+      if (FileNameService.instance) {
+         FileNameService.instance = null as unknown as FileNameService;
+      }
+   }
+
    private toKebabCase(str: string): string {
       return str
          .replace(/([a-z])([A-Z])/g, '$1-$2')

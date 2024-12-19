@@ -16,22 +16,29 @@ interface ICloudflareSettings {
 }
 
 /**
- * Service gérant les interactions avec Cloudflare Images et Stream.
- * Gère les uploads et les transformations automatiques de médias.
+ * Service gérant les interactions avec l'API Cloudflare Images et Stream.
+ * Permet l'upload et la gestion des médias via le CDN Cloudflare.
  */
 export class CloudflareMediaService extends AbstractMediaUploadService {
     private static instance: CloudflareMediaService;
     private settings?: ICloudflareSettings;
     private boundHandleSettingsUpdate: EventCallback<EventName.SETTINGS_UPDATED>;
     private picgo?: PicGoService;
+    private isProcessingSettings = false;
+    private isProcessingUpload = false;
+    private lastUploadTime = 0;
+    private readonly UPLOAD_COOLDOWN = 100; // ms
 
     private constructor() {
         super();
-        console.log('[CloudflareMedia] Initialisation du service');
         this.boundHandleSettingsUpdate = this.handleSettingsUpdate.bind(this);
         this.initializeEventListeners();
     }
 
+    /**
+     * Retourne l'instance unique du service (Singleton)
+     * @returns {CloudflareMediaService} L'instance du service
+     */
     public static getInstance(): CloudflareMediaService {
         if (!CloudflareMediaService.instance) {
             CloudflareMediaService.instance = new CloudflareMediaService();
@@ -39,39 +46,45 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
         return CloudflareMediaService.instance;
     }
 
+    /**
+     * Initialise les écouteurs d'événements du service
+     * @private
+     */
     private initializeEventListeners(): void {
         const eventBus = EventBusService.getInstance();
         eventBus.on(EventName.SETTINGS_UPDATED, this.boundHandleSettingsUpdate);
     }
 
+    /**
+     * Gère la mise à jour des paramètres du service
+     * @param {Object} data - Les données de mise à jour
+     * @param {IPluginSettings} data.settings - Les nouveaux paramètres
+     * @private
+     */
     private handleSettingsUpdate(data: { settings: IPluginSettings }): void {
-        console.log('[CloudflareMedia] Mise à jour des paramètres:', {
-            service: data.settings.service,
-            hasCloudflare: !!data.settings.cloudflare,
-            accountId: data.settings.cloudflare?.accountId,
-            hasToken: !!data.settings.cloudflare?.imagesToken
-        });
-        
-        if (data.settings.service !== 'cloudflare') {
-            console.warn('[CloudflareMedia] Service non configuré pour Cloudflare');
-            this.settings = undefined;
-            return;
-        }
-        
-        this.settings = data.settings.cloudflare;
-        
-        if (this.settings) {
-            console.log('[CloudflareMedia] Configuration mise à jour:', {
-                accountId: this.settings.accountId,
-                hasToken: !!this.settings.imagesToken,
-                hasCustomDomain: !!this.settings.customDomain
-            });
-            this.setupPicGo();
-        } else {
-            console.warn('[CloudflareMedia] Aucun paramètre Cloudflare trouvé');
+        if (this.isProcessingSettings) return;
+        this.isProcessingSettings = true;
+
+        try {
+            if (data.settings.service !== 'cloudflare') {
+                this.settings = undefined;
+                return;
+            }
+            
+            this.settings = data.settings.cloudflare;
+            
+            if (this.settings) {
+                this.setupPicGo();
+            }
+        } finally {
+            this.isProcessingSettings = false;
         }
     }
 
+    /**
+     * Configure le service PicGo avec les paramètres actuels
+     * @private
+     */
     private setupPicGo(): void {
         if (!this.settings) return;
 
@@ -82,37 +95,35 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
         });
     }
 
+    /**
+     * Upload un fichier vers Cloudflare Images ou Stream
+     * @param {File} file - Le fichier à uploader
+     * @param {IUploadOptions} [options] - Options d'upload optionnelles
+     * @returns {Promise<IUploadResponse>} Réponse de l'upload
+     */
     public async upload(file: File, options?: IUploadOptions): Promise<IUploadResponse> {
-        console.log(`[CloudflareMedia] Début du processus d'upload pour ${file.name}`);
-        
         if (!this.isConfigured()) {
-            console.error('[CloudflareMedia] Service non configuré');
             throw new Error('Configuration Cloudflare manquante');
         }
 
         const isVideo = this.isVideoFile(file);
-        console.log(`[CloudflareMedia] Type de fichier détecté: ${isVideo ? 'vidéo' : 'image'}`);
 
         if (isVideo && !this.settings?.imagesToken) {
-            console.error('[CloudflareMedia] Token manquant pour l\'upload de vidéo');
             throw new Error('Configuration Cloudflare Stream manquante pour les vidéos');
         }
 
         if (!isVideo && !this.settings?.imagesToken) {
-            console.error('[CloudflareMedia] Token manquant pour l\'upload d\'image');
             throw new Error('Configuration Cloudflare Images manquante pour les images');
         }
 
         try {
             if (isVideo) {
-                console.log('[CloudflareMedia] Démarrage upload vidéo vers Stream');
                 return await this.uploadVideo(file, options);
             } else {
-                console.log('[CloudflareMedia] Démarrage upload image vers Images');
                 return await this.uploadImage(file, options);
             }
         } catch (error) {
-            console.error('[CloudflareMedia] Erreur pendant l\'upload:', error);
+            console.error('❌ Erreur pendant l\'upload:', error);
             if (error instanceof Error) {
                 throw new Error(`Erreur d'upload: ${error.message}`);
             }
@@ -120,6 +131,13 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
         }
     }
 
+    /**
+     * Formate l'URL d'une image avec les paramètres de variant
+     * @param {string} baseUrl - URL de base de l'image
+     * @param {string} [variant] - Variant de l'image (ex: public, thumbnail)
+     * @returns {string} URL formatée
+     * @private
+     */
     private formatImageUrl(baseUrl: string, variant?: string): string {
         if (!this.settings?.accountId || !this.settings?.deliveryHash) {
             throw new Error('Configuration Cloudflare manquante');
@@ -135,47 +153,56 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
         return `https://imagedelivery.net/${this.settings.deliveryHash}/${imageId}/${selectedVariant}`;
     }
 
+    /**
+     * Vérifie si un fichier est une vidéo
+     * @param {File} file - Le fichier à vérifier
+     * @returns {boolean} true si c'est une vidéo
+     * @private
+     */
     private isVideoFile(file: File): boolean {
         return file.type.startsWith('video/');
     }
 
+    /**
+     * Effectue une requête vers l'API Cloudflare
+     * @param {RequestUrlParam} options - Options de la requête
+     * @returns {Promise<any>} Réponse de l'API
+     * @private
+     */
     private async makeRequest(options: RequestUrlParam): Promise<any> {
         try {
             const response = await requestUrl(options);
             return response.json;
         } catch (error) {
             if (error.response) {
-                console.error('[CloudflareMedia] Erreur avec réponse:', await error.response.json());
+                console.error('❌ Erreur de réponse API:', await error.response.json());
             }
             throw error;
         }
     }
 
+    /**
+     * Upload une image vers Cloudflare Images
+     * @param {File} file - L'image à uploader
+     * @param {IUploadOptions} [options] - Options d'upload
+     * @returns {Promise<IUploadResponse>} Réponse de l'upload
+     * @private
+     */
     private async uploadImage(file: File, options?: IUploadOptions): Promise<IUploadResponse> {
-        console.log(`[CloudflareMedia] Préparation upload image: ${file.name}`);
         if (!this.settings?.accountId || !this.settings?.imagesToken) {
             throw new Error('Configuration Cloudflare manquante');
         }
 
         try {
-            // Créer le boundary
             const boundary = '----CloudflareFormBoundary' + Math.random().toString(36).substring(2);
-
-            // Construire le corps multipart/form-data
             const arrayBuffer = await file.arrayBuffer();
             const encoder = new TextEncoder();
-
-            // Début du multipart
             const start = encoder.encode(
                 `--${boundary}\r\n` +
                 `Content-Disposition: form-data; name="file"; filename="${file.name}"\r\n` +
                 `Content-Type: ${file.type}\r\n\r\n`
             );
-
-            // Fin du multipart
             const end = encoder.encode(`\r\n--${boundary}--\r\n`);
-
-            // Combiner les parties
             const body = new Uint8Array(start.length + arrayBuffer.byteLength + end.length);
             body.set(start, 0);
             body.set(new Uint8Array(arrayBuffer), start.length);
@@ -192,7 +219,6 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
             });
 
             if (!response?.success || !response?.result?.id) {
-                console.error('[CloudflareMedia] Réponse invalide:', response);
                 throw new Error(`Réponse invalide de Cloudflare Images: ${JSON.stringify(response)}`);
             }
 
@@ -208,18 +234,19 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
                 }
             };
         } catch (error) {
-            console.error('[CloudflareMedia] Erreur détaillée:', {
-                error,
-                message: error.message,
-                stack: error.stack,
-                response: error.response
-            });
+            console.error('❌ Erreur détaillée:', error);
             throw error;
         }
     }
 
+    /**
+     * Upload une vidéo vers Cloudflare Stream
+     * @param {File} file - La vidéo à uploader
+     * @param {IUploadOptions} [options] - Options d'upload
+     * @returns {Promise<IUploadResponse>} Réponse de l'upload
+     * @private
+     */
     private async uploadVideo(file: File, options?: IUploadOptions): Promise<IUploadResponse> {
-        console.log(`[CloudflareMedia] Préparation upload vidéo: ${file.name}`);
         if (!this.settings?.accountId || !this.settings?.imagesToken) {
             throw new Error('Configuration Cloudflare manquante');
         }
@@ -237,7 +264,6 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
             });
 
             if (!response?.success || !response?.result?.uid) {
-                console.error('[CloudflareMedia] Réponse Stream invalide:', response);
                 throw new Error('Réponse invalide de Cloudflare Stream');
             }
 
@@ -254,16 +280,16 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
                 }
             };
         } catch (error) {
-            console.error('[CloudflareMedia] Erreur détaillée:', {
-                error,
-                message: error.message,
-                stack: error.stack,
-                response: error.response
-            });
+            console.error('❌ Erreur détaillée:', error);
             throw error;
         }
     }
 
+    /**
+     * Supprime un média de Cloudflare
+     * @param {string} publicId - L'identifiant public du média
+     * @returns {Promise<void>}
+     */
     async delete(publicId: string): Promise<void> {
         if (!this.isConfigured()) {
             throw new Error('Configuration Cloudflare manquante');
@@ -275,7 +301,8 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
             : `https://api.cloudflare.com/client/v4/accounts/${this.settings!.accountId}/images/v1/${publicId}`;
 
         try {
-            const response = await this.makeRequest(url, {
+            const response = await this.makeRequest({
+                url,
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${this.settings!.imagesToken}`,
@@ -284,21 +311,24 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
             });
 
             if (!response?.success) {
-                console.error('[CloudflareMedia] Erreur lors de la suppression:', response);
                 throw new Error(`Erreur de suppression: ${response.status}`);
             }
         } catch (error) {
-            console.error('[CloudflareMedia] Erreur lors de la suppression:', error);
             throw new Error(`Erreur de suppression: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
     }
 
+    /**
+     * Récupère l'URL d'un média
+     * @param {string} publicId - L'identifiant public du média
+     * @param {string} [variant] - Le variant pour les images
+     * @returns {string} L'URL du média
+     */
     getUrl(publicId: string, variant?: string): string {
         if (!this.isConfigured()) {
             throw new Error('Configuration Cloudflare manquante');
         }
 
-        // Détermine si c'est une vidéo ou une image basé sur le format du publicId
         const isVideo = publicId.includes('stream-');
 
         if (isVideo) {
@@ -309,62 +339,22 @@ export class CloudflareMediaService extends AbstractMediaUploadService {
         }
     }
 
+    /**
+     * Vérifie si le service est correctement configuré
+     * @returns {boolean} true si le service est configuré
+     */
     public isConfigured(): boolean {
-        const configured = !!(
-            this.settings?.accountId &&
-            this.settings?.imagesToken
-        );
-        console.log('[CloudflareMedia] Vérification de la configuration:', {
-            hasSettings: !!this.settings,
-            accountId: this.settings?.accountId,
-            hasToken: !!this.settings?.imagesToken,
-            isConfigured: configured
-        });
-        return configured;
+        return !!(this.settings?.accountId && this.settings?.imagesToken);
     }
 
+    /**
+     * Nettoie les ressources du service
+     */
     public static cleanup(): void {
         if (CloudflareMediaService.instance) {
             const eventBus = EventBusService.getInstance();
             eventBus.off(EventName.SETTINGS_UPDATED, CloudflareMediaService.instance.boundHandleSettingsUpdate);
             CloudflareMediaService.instance = null as unknown as CloudflareMediaService;
-        }
-    }
-
-    async uploadFile(fileData: ArrayBuffer, fileName: string): Promise<string> {
-        if (!this.settings?.accountId || !this.settings?.imagesToken) {
-            throw new Error('Configuration Cloudflare manquante');
-        }
-
-        try {
-            const formData = new FormData();
-            const blob = new Blob([fileData], { type: 'application/octet-stream' });
-            formData.append('file', blob, fileName);
-
-            console.log('Envoi de la requête à Cloudflare...');
-
-            const response = await requestUrl({
-                url: `https://api.cloudflare.com/client/v4/accounts/${this.settings.accountId}/images/v1`,
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.settings.imagesToken}`
-                },
-                body: formData as unknown as string // Type cast nécessaire pour Obsidian API
-            });
-
-            if (!response.json.success) {
-                console.error('Erreur Cloudflare:', response.json.errors);
-                throw new Error(`Échec de l'upload: ${JSON.stringify(response.json.errors)}`);
-            }
-
-            const imageId = response.json.result.id;
-            const imageUrl = this.formatImageUrl(`https://imagedelivery.net/${this.settings.accountId}/${imageId}`);
-            
-            console.log('URL générée:', imageUrl);
-            return imageUrl;
-        } catch (error) {
-            console.error('Erreur lors de l\'upload vers Cloudflare:', error);
-            throw error;
         }
     }
 } 

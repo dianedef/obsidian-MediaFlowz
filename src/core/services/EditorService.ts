@@ -13,10 +13,11 @@ import { EventName } from '../types/events';
 export class EditorService {
     private static instance: EditorService;
     private eventBus: EventBusService;
+    private app: App;
 
     private constructor() {
         this.eventBus = EventBusService.getInstance();
-        this.setupEventListeners();
+        this.app = (window as any).app;
     }
 
     /**
@@ -42,7 +43,7 @@ export class EditorService {
         // Écouter les uploads réussis pour insérer le média
         this.eventBus.on(EventName.MEDIA_UPLOADED, ({ url, fileName }) => {
             // Récupérer l'éditeur actif
-            const activeLeaf = app.workspace.activeLeaf;
+            const activeLeaf = this.app.workspace.activeLeaf;
             if (!activeLeaf?.view?.editor) return;
 
             const editor = activeLeaf.view.editor;
@@ -123,6 +124,17 @@ export class EditorService {
             return `<video src="${url}" controls title="${fileName}"></video>`;
         } else {
             return `![${fileName}](${url})`;
+        }
+    }
+
+    /**
+     * Nettoie l'instance du service.
+     * 
+     * @private
+     */
+    public static cleanup(): void {
+        if (EditorService.instance) {
+            EditorService.instance = null as unknown as EditorService;
         }
     }
 } 

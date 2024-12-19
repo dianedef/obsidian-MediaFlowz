@@ -16,13 +16,6 @@ export abstract class AbstractMediaUploadService implements IMediaUploadService 
         this.errorService = ErrorService.getInstance();
         this.settingsService = SettingsService.getInstance();
         this.app = (window as any).app;
-        this.setupEventListeners();
-    }
-
-    protected setupEventListeners(): void {
-        this.eventBus.on(EventName.MEDIA_PASTED, async (data) => {
-            await this.handleMediaUpload(data);
-        });
     }
 
     protected isInIgnoredFolder(filePath: string): boolean {
@@ -36,81 +29,6 @@ export abstract class AbstractMediaUploadService implements IMediaUploadService 
         return settings.ignoredFolders.some(folder => {
             const normalizedFolder = folder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
             return normalizedPath.startsWith(normalizedFolder + '/') || normalizedPath === normalizedFolder;
-        });
-    }
-
-    protected async handleMediaUpload(data: { files: FileList | File[] }): Promise<void> {
-        if (!this.isConfigured()) {
-            this.handleConfigurationError();
-            return;
-        }
-
-        const mediaFiles = Array.from(data.files).filter(file => {
-            if (!this.isMediaFile(file)) {
-                return false;
-            }
-
-            const activeFile = this.app.workspace.getActiveFile();
-            if (activeFile && this.isInIgnoredFolder(activeFile.path)) {
-                console.log(`Fichier ignoré car dans un dossier ignoré: ${activeFile.path}`);
-                return false;
-            }
-
-            return true;
-        });
-        
-        if (mediaFiles.length === 0) {
-            return;
-        }
-
-        try {
-            const results = await Promise.all(
-                mediaFiles.map(file => this.upload(file))
-            );
-            
-            results.forEach((result, index) => {
-                this.eventBus.emit(EventName.MEDIA_UPLOADED, {
-                    url: result.url,
-                    fileName: mediaFiles[index].name
-                });
-            });
-        } catch (error) {
-            this.handleUploadError(error as Error, mediaFiles[0].name);
-        }
-    }
-
-    protected handleConfigurationError(): void {
-        const structuredError = this.errorService.createError(
-            ErrorType.CONFIG,
-            'errors.notConfigured'
-        );
-        this.errorService.handleError(structuredError);
-        this.eventBus.emit(EventName.MEDIA_UPLOAD_ERROR, {
-            error: new Error(structuredError.message),
-            fileName: 'unknown'
-        });
-    }
-
-    protected handleUploadError(error: Error, fileName: string): void {
-        const isNetwork = this.errorService.isNetworkError(error);
-        const structuredError = isNetwork
-            ? this.errorService.createError(
-                ErrorType.NETWORK,
-                'errors.networkError',
-                error,
-                { fileName }
-            )
-            : this.errorService.createError(
-                ErrorType.UPLOAD,
-                'errors.uploadFailed',
-                error,
-                { fileName }
-            );
-
-        this.errorService.handleError(structuredError);
-        this.eventBus.emit(EventName.MEDIA_UPLOAD_ERROR, {
-            error: new Error(structuredError.message),
-            fileName
         });
     }
 

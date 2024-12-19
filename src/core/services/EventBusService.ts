@@ -1,4 +1,5 @@
 import { EventName, EventMap, EventCallback } from '../types/events';
+import { EventEmitter } from 'events';
 
 /**
  * Service de gestion des événements de l'application.
@@ -12,11 +13,11 @@ import { EventName, EventMap, EventCallback } from '../types/events';
  * });
  */
 export class EventBusService {
-    private static instance: EventBusService | undefined;
-    private listeners: Map<EventName, Set<EventCallback<any>>>;
+    private static instance: EventBusService;
+    private eventEmitter: EventEmitter;
 
     private constructor() {
-        this.listeners = new Map();
+        this.eventEmitter = new EventEmitter();
     }
 
     /**
@@ -45,10 +46,7 @@ export class EventBusService {
      * });
      */
     on<T extends EventName>(event: T, callback: EventCallback<T>): void {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, new Set());
-        }
-        this.listeners.get(event)?.add(callback);
+        this.eventEmitter.on(event, callback);
     }
 
     /**
@@ -65,13 +63,7 @@ export class EventBusService {
      * });
      */
     emit<T extends EventName>(event: T, data: EventMap[T]): void {
-        this.listeners.get(event)?.forEach(callback => {
-            try {
-                callback(data);
-            } catch (error) {
-                console.error(`Error in event listener for ${event}:`, error);
-            }
-        });
+        this.eventEmitter.emit(event, data);
     }
 
     /**
@@ -83,11 +75,7 @@ export class EventBusService {
      * @param {EventCallback<T>} callback - L'écouteur à retirer
      */
     off<T extends EventName>(event: T, callback: EventCallback<T>): void {
-        this.listeners.get(event)?.delete(callback);
-        // Nettoyage si plus aucun listener
-        if (this.listeners.get(event)?.size === 0) {
-            this.listeners.delete(event);
-        }
+        this.eventEmitter.removeListener(event, callback);
     }
 
     /**
@@ -118,7 +106,7 @@ export class EventBusService {
      * @returns {number} Le nombre d'écouteurs
      */
     getListenerCount(event: EventName): number {
-        return this.listeners.get(event)?.size ?? 0;
+        return this.eventEmitter.listenerCount(event);
     }
 
     /**
@@ -127,8 +115,8 @@ export class EventBusService {
      */
     public static cleanup(): void {
         if (EventBusService.instance) {
-            EventBusService.instance.listeners.clear();
-            EventBusService.instance = undefined;
+            EventBusService.instance.eventEmitter.removeAllListeners();
+            EventBusService.instance = null as unknown as EventBusService;
         }
     }
 } 

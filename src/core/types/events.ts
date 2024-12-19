@@ -65,6 +65,8 @@ export interface EventMap {
     [EventName.MEDIA_PASTED]: {
         /** Liste des fichiers collés */
         files: FileList | File[];
+        /** L'événement de collage original */
+        event?: ClipboardEvent;
     };
     
     /** Données émises après un upload réussi */
@@ -73,6 +75,12 @@ export interface EventMap {
         url: string;
         /** Nom original du fichier */
         fileName: string;
+        /** Métadonnées optionnelles */
+        metadata?: {
+            id: string;
+            type: string;
+            [key: string]: any;
+        };
     };
     
     /** Données émises en cas d'erreur d'upload */
