@@ -78,7 +78,76 @@ export default class MediaFlowzPlugin extends Plugin {
 
                 if (isIgnored) {
                     console.log('📝 Note dans un dossier ignoré, comportement par défaut');
-                    return; // Laisser Obsidian gérer le collage normalement
+                    
+                    // Si l'option est activée, créer un dossier pour la note
+                    if (this.settings.ignoredFoldersSettings.useNoteFolders) {
+                        // Empêcher le comportement par défaut immédiatement
+                        evt.preventDefault();
+                        evt.stopPropagation();
+
+                        const notePath = activeFile.path;
+                        const noteBasename = activeFile.basename;
+                        const noteDirPath = notePath.substring(0, notePath.lastIndexOf('/'));
+                        const assetsFolderPath = `${noteDirPath}/${noteBasename}`;
+
+                        try {
+                            // Vérifier si le dossier existe déjà
+                            const folder = this.app.vault.getAbstractFileByPath(assetsFolderPath);
+                            if (!folder) {
+                                // Créer le dossier
+                                await this.app.vault.createFolder(assetsFolderPath);
+                                console.log('📁 Dossier créé pour la note:', assetsFolderPath);
+                                showNotice(
+                                    getTranslation('settings.ignoredFolders.useNoteFolders.created')
+                                        .replace('{noteName}', noteBasename),
+                                    NOTICE_DURATIONS.MEDIUM
+                                );
+                            }
+
+                            // Gérer chaque fichier du presse-papier
+                            for (const file of Array.from(files)) {
+                                const fileName = this.fileNameService.generateFileName(file);
+                                const filePath = `${assetsFolderPath}/${fileName}`;
+                                
+                                try {
+                                    // Convertir le File en ArrayBuffer
+                                    const buffer = await file.arrayBuffer();
+                                    
+                                    // Créer le fichier dans le bon dossier
+                                    await this.app.vault.createBinary(filePath, buffer);
+                                    console.log('✅ Fichier créé:', filePath);
+                                    
+                                    // Insérer le lien dans l'éditeur
+                                    const cursor = editor.getCursor();
+                                    const relativePath = this.app.metadataCache.getFirstLinkpathDest(fileName, activeFile.path)?.path || fileName;
+                                    const markdownLink = `![[${relativePath}]]`;
+                                    editor.replaceRange(markdownLink + '\n', cursor);
+                                    
+                                    showNotice(
+                                        getTranslation('notices.mediaUploaded').replace('{fileName}', fileName),
+                                        NOTICE_DURATIONS.UPLOAD
+                                    );
+                                } catch (error) {
+                                    console.error('❌ Erreur lors de la création du fichier:', error);
+                                    showNotice(
+                                        getTranslation('notices.mediaUploadError')
+                                            .replace('{fileName}', fileName)
+                                            .replace('{error}', error instanceof Error ? error.message : 'Unknown error'),
+                                        NOTICE_DURATIONS.ERROR
+                                    );
+                                }
+                            }
+                        } catch (error) {
+                            console.error('❌ Erreur lors de la gestion des fichiers:', error);
+                            showNotice(
+                                getTranslation('errors.unexpectedError'),
+                                NOTICE_DURATIONS.ERROR
+                            );
+                        }
+                        return;
+                    }
+                    
+                    return; // Laisser Obsidian gérer le collage normalement si l'option n'est pas activée
                 }
 
                 try {

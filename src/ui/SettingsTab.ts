@@ -486,7 +486,57 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
         }
 
         // Section des dossiers ignorés
-        this.displayIgnoredFoldersSection(containerEl);
+        const ignoredFoldersSection = containerEl.createDiv('ignored-folders-section');
+        ignoredFoldersSection.createEl('h3', { text: getTranslation('settings.ignoredFolders.title') });
+
+        // Option pour créer un dossier par note
+        new Setting(ignoredFoldersSection)
+            .setName(getTranslation('settings.ignoredFolders.useNoteFolders'))
+            .setDesc(getTranslation('settings.ignoredFolders.useNoteFolders.desc'))
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.ignoredFoldersSettings.useNoteFolders)
+                .onChange(async (value) => {
+                    this.plugin.settings.ignoredFoldersSettings.useNoteFolders = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        // Liste des dossiers ignorés actuels
+        const ignoredFoldersList = ignoredFoldersSection.createEl('div', { cls: 'ignored-folders-list' });
+        this.plugin.settings.ignoredFolders.forEach((folder, index) => {
+            const folderDiv = ignoredFoldersList.createEl('div', { cls: 'ignored-folder-item' });
+            
+            new Setting(folderDiv)
+                .setName(folder)
+                .addButton(button => button
+                    .setIcon('trash')
+                    .setTooltip(getTranslation('settings.ignoredFolders.remove'))
+                    .onClick(async () => {
+                        const newIgnoredFolders = [...this.plugin.settings.ignoredFolders];
+                        newIgnoredFolders.splice(index, 1);
+                        await this.updateSettings({
+                            ignoredFolders: newIgnoredFolders
+                        });
+                        this.display();
+                    }));
+        });
+
+        // Bouton pour ajouter un nouveau dossier
+        new Setting(ignoredFoldersSection)
+            .setName(getTranslation('settings.ignoredFolders.add'))
+            .setDesc(getTranslation('settings.ignoredFolders.addDesc'))
+            .addButton(button => button
+                .setButtonText(getTranslation('settings.ignoredFolders.select'))
+                .onClick((e: MouseEvent) => {
+                    // Créer le menu de sélection principal
+                    const menu = new Menu();
+                    
+                    // Construire la hiérarchie des dossiers à partir de la racine
+                    this.buildFolderMenu(menu, this.app.vault.getRoot());
+
+                    // Afficher le menu à la position du clic
+                    menu.showAtMouseEvent(e);
+                }));
     }
 
     private async updateSettings(newSettings: Partial<typeof this.plugin.settings>): Promise<void> {
@@ -822,48 +872,5 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                 });
             }
         });
-    }
-
-    // Section des dossiers ignorés
-    private displayIgnoredFoldersSection(containerEl: HTMLElement): void {
-        const ignoredFoldersSection = containerEl.createDiv('ignored-folders-section');
-        ignoredFoldersSection.createEl('h3', { text: getTranslation('settings.ignoredFolders.title') });
-
-        // Liste des dossiers ignorés actuels
-        const ignoredFoldersList = ignoredFoldersSection.createEl('div', { cls: 'ignored-folders-list' });
-        this.plugin.settings.ignoredFolders.forEach((folder, index) => {
-            const folderDiv = ignoredFoldersList.createEl('div', { cls: 'ignored-folder-item' });
-            
-            new Setting(folderDiv)
-                .setName(folder)
-                .addButton(button => button
-                    .setIcon('trash')
-                    .setTooltip(getTranslation('settings.ignoredFolders.remove'))
-                    .onClick(async () => {
-                        const newIgnoredFolders = [...this.plugin.settings.ignoredFolders];
-                        newIgnoredFolders.splice(index, 1);
-                        await this.updateSettings({
-                            ignoredFolders: newIgnoredFolders
-                        });
-                        this.display();
-                    }));
-        });
-
-        // Bouton pour ajouter un nouveau dossier
-        new Setting(ignoredFoldersSection)
-            .setName(getTranslation('settings.ignoredFolders.add'))
-            .setDesc(getTranslation('settings.ignoredFolders.addDesc'))
-            .addButton(button => button
-                .setButtonText(getTranslation('settings.ignoredFolders.select'))
-                .onClick((e: MouseEvent) => {
-                    // Créer le menu de sélection principal
-                    const menu = new Menu();
-                    
-                    // Construire la hiérarchie des dossiers à partir de la racine
-                    this.buildFolderMenu(menu, this.app.vault.getRoot());
-
-                    // Afficher le menu à la position du clic
-                    menu.showAtMouseEvent(e);
-                }));
     }
 } 

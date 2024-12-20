@@ -101,6 +101,9 @@ const fr = {
     'settings.ignoredFolders.selectFolder': 'Sélectionner un dossier',
     'settings.ignoredFolders.folderAdded': 'Dossier ajouté aux dossiers ignorés',
     'settings.ignoredFolders.folderRemoved': 'Dossier retiré des dossiers ignorés',
+    'settings.ignoredFolders.useNoteFolders': 'Dossier par note',
+    'settings.ignoredFolders.useNoteFolders.desc': 'Pour les notes dans les dossiers ignorés, créer un dossier du même nom que la note pour y stocker les images.',
+    'settings.ignoredFolders.useNoteFolders.created': 'Dossier créé pour la note : {noteName}',
 
     // Features
     'settings.features.title': 'Fonctionnalités',
@@ -283,6 +286,9 @@ const en = {
     'settings.ignoredFolders.selectFolder': 'Select a folder',
     'settings.ignoredFolders.folderAdded': 'Folder added to ignored folders',
     'settings.ignoredFolders.folderRemoved': 'Folder removed from ignored folders',
+    'settings.ignoredFolders.useNoteFolders': 'Note folder',
+    'settings.ignoredFolders.useNoteFolders.desc': 'For notes in ignored folders, create a folder with the same name as the note to store images.',
+    'settings.ignoredFolders.useNoteFolders.created': 'Folder created for note: {noteName}',
 
     // Features
     'settings.features.title': 'Features',

@@ -59,6 +59,14 @@ export enum SupportedService {
 }
 
 /**
+ * Paramètres pour les dossiers ignorés
+ */
+export interface IIgnoredFoldersSettings {
+    /** Créer un dossier par note */
+    useNoteFolders: boolean;
+}
+
+/**
  * Configuration globale du plugin
  */
 export interface IPluginSettings {
@@ -72,6 +80,8 @@ export interface IPluginSettings {
     cloudflare?: ICloudflareSettings;
     /** Liste des dossiers à ignorer */
     ignoredFolders: string[];
+    /** Paramètres des dossiers ignorés */
+    ignoredFoldersSettings: IIgnoredFoldersSettings;
     /** Barre d'outils */
     showImageToolbar: boolean;
     /** Boutons de la barre d'outils */
@@ -135,6 +145,9 @@ export interface IPluginSettings {
 export const DEFAULT_SETTINGS: IPluginSettings = {
     service: 'cloudflare',
     ignoredFolders: [],
+    ignoredFoldersSettings: {
+        useNoteFolders: false
+    },
     showImageToolbar: true,
     toolbarButtons: {
         copyImage: true,
