@@ -82,6 +82,7 @@ const fr = {
     'notices.uploadProcessing': "🔄 Traitement...",
     'notices.uploadComplete': "✅ {fileName} uploadé et traité avec succès",
     'notices.uploadProgress': '⬛⬛⬛⬜⬜ {step}/5',
+    'notices.folderRenamed': '📁 Dossier renommé de "{oldName}" à "{newName}"',
 
     // Erreurs
     'errors.notConfigured': 'Le service n\'est pas configuré',
@@ -90,6 +91,8 @@ const fr = {
     'errors.checkSettings': 'Vérifiez vos paramètres dans les réglages du plugin',
     'errors.checkConnection': 'Vérifiez votre connexion internet',
     'errors.unexpectedError': 'Une erreur inattendue est survenue',
+    'errors.folderRenameError': '❌ Erreur lors du renommage du dossier: {error}',
+    'errors.fileCreationError': '❌ Erreur lors de la création du fichier local: {error}',
 
     // Paramètres des dossiers ignorés
     'settings.ignoredFolders.title': 'Dossiers ignorés',
@@ -102,8 +105,9 @@ const fr = {
     'settings.ignoredFolders.folderAdded': 'Dossier ajouté aux dossiers ignorés',
     'settings.ignoredFolders.folderRemoved': 'Dossier retiré des dossiers ignorés',
     'settings.ignoredFolders.useNoteFolders': 'Dossier par note',
-    'settings.ignoredFolders.useNoteFolders.desc': 'Pour les notes dans les dossiers ignorés, créer un dossier du même nom que la note pour y stocker les images.',
+    'settings.ignoredFolders.useNoteFolders.desc': 'Pour les notes dans les dossiers ignorés, créer un dossier du même nom que la note pour y stocker les images. Si vous renommez la note, le dossier sera automatiquement renommé et tous les liens d\'images seront mis à jour dans vos notes.',
     'settings.ignoredFolders.useNoteFolders.created': 'Dossier créé pour la note : {noteName}',
+    'settings.ignoredFolders.fileCreated': 'Fichier local créé : {fileName}',
 
     // Features
     'settings.features.title': 'Fonctionnalités',
@@ -267,6 +271,7 @@ const en = {
     'notices.uploadProcessing': "🔄 Processing...",
     'notices.uploadComplete': "✅ {fileName} uploaded and processed successfully",
     'notices.uploadProgress': '⬛⬛⬛⬜⬜ {step}/5',
+    'notices.folderRenamed': '📁 Folder renamed from "{oldName}" to "{newName}"',
 
     // Errors
     'errors.notConfigured': 'Service is not configured',
@@ -275,6 +280,8 @@ const en = {
     'errors.checkSettings': 'Please check your settings in the plugin configuration',
     'errors.checkConnection': 'Please check your internet connection',
     'errors.unexpectedError': 'An unexpected error occurred',
+    'errors.folderRenameError': '❌ Error renaming folder: {error}',
+    'errors.fileCreationError': '❌ Error creating local file: {error}',
 
     // Ignored folders settings
     'settings.ignoredFolders.title': 'Ignored Folders',
@@ -287,8 +294,9 @@ const en = {
     'settings.ignoredFolders.folderAdded': 'Folder added to ignored folders',
     'settings.ignoredFolders.folderRemoved': 'Folder removed from ignored folders',
     'settings.ignoredFolders.useNoteFolders': 'Note folder',
-    'settings.ignoredFolders.useNoteFolders.desc': 'For notes in ignored folders, create a folder with the same name as the note to store images.',
+    'settings.ignoredFolders.useNoteFolders.desc': 'For notes in ignored folders, creates a folder with the same name as the note to store images. If you rename the note, the folder will be automatically renamed and all image links will be updated in your notes.',
     'settings.ignoredFolders.useNoteFolders.created': 'Folder created for note: {noteName}',
+    'settings.ignoredFolders.fileCreated': 'Local file created: {fileName}',
 
     // Features
     'settings.features.title': 'Features',

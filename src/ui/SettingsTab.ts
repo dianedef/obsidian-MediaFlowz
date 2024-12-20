@@ -521,7 +521,7 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                     }));
         });
 
-        // Bouton pour ajouter un nouveau dossier
+        // Bouton pour ajouter un nouveau dossier à ignorer
         new Setting(ignoredFoldersSection)
             .setName(getTranslation('settings.ignoredFolders.add'))
             .setDesc(getTranslation('settings.ignoredFolders.addDesc'))

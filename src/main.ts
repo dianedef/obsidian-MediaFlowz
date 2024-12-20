@@ -1,4 +1,4 @@
-import { Plugin, MarkdownView, Editor } from 'obsidian';
+import { Plugin, MarkdownView, Editor, TFile, TAbstractFile, TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS, type IPluginSettings } from './core/types/settings';
 import { getTranslation } from './i18n/translations';
 import { MediaFlowzSettingsTab } from './ui/SettingsTab';
@@ -124,13 +124,14 @@ export default class MediaFlowzPlugin extends Plugin {
                                     editor.replaceRange(markdownLink + '\n', cursor);
                                     
                                     showNotice(
-                                        getTranslation('notices.mediaUploaded').replace('{fileName}', fileName),
-                                        NOTICE_DURATIONS.UPLOAD
+                                        getTranslation('settings.ignoredFolders.fileCreated')
+                                            .replace('{fileName}', fileName),
+                                        NOTICE_DURATIONS.MEDIUM
                                     );
                                 } catch (error) {
                                     console.error('❌ Erreur lors de la création du fichier:', error);
                                     showNotice(
-                                        getTranslation('notices.mediaUploadError')
+                                        getTranslation('errors.fileCreationError')
                                             .replace('{fileName}', fileName)
                                             .replace('{error}', error instanceof Error ? error.message : 'Unknown error'),
                                         NOTICE_DURATIONS.ERROR
@@ -259,6 +260,174 @@ export default class MediaFlowzPlugin extends Plugin {
                 }
             }
         }));
+
+        // Ajouter l'écouteur pour le renommage des fichiers
+        this.registerEvent(
+            this.app.vault.on('rename', async (file: TAbstractFile, oldPath: string) => {
+                if (!this.settings.ignoredFoldersSettings.useNoteFolders) return;
+                
+                // Vérifier si c'est une note markdown
+                if (!(file instanceof TFile) || file.extension !== 'md') return;
+
+                // Vérifier si la note est dans un dossier ignoré
+                const isIgnored = this.settings.ignoredFolders.some(folder => {
+                    const normalizedFolder = folder.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+                    const normalizedPath = file.path.replace(/\\/g, '/');
+                    return normalizedPath.startsWith(normalizedFolder + '/') || normalizedPath === normalizedFolder;
+                });
+
+                if (!isIgnored) return;
+
+                try {
+                    // Construire les anciens et nouveaux chemins des dossiers
+                    const oldDirPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
+                    const oldBasename = oldPath.substring(oldPath.lastIndexOf('/') + 1).replace('.md', '');
+                    const oldFolderPath = `${oldDirPath}/${oldBasename}`;
+
+                    const newDirPath = file.path.substring(0, file.path.lastIndexOf('/'));
+                    const newBasename = file.basename;
+                    const newFolderPath = `${newDirPath}/${newBasename}`;
+
+                    // Vérifier si l'ancien dossier existe
+                    const oldFolder = this.app.vault.getAbstractFileByPath(oldFolderPath);
+                    if (!oldFolder || !(oldFolder instanceof TFolder)) return;
+
+                    // Renommer le dossier
+                    await this.app.vault.rename(oldFolder, newFolderPath);
+                    console.log('📁 Dossier renommé:', {
+                        de: oldFolderPath,
+                        vers: newFolderPath
+                    });
+
+                    // Attendre un peu pour s'assurer que le système de fichiers est à jour
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // Mettre à jour les liens dans toutes les notes
+                    const files = this.app.vault.getMarkdownFiles();
+                    console.log('📝 Analyse des fichiers markdown:', files.length);
+
+                    const newFolder = this.app.vault.getAbstractFileByPath(newFolderPath);
+                    if (!newFolder || !(newFolder instanceof TFolder)) {
+                        console.error('❌ Nouveau dossier non trouvé:', newFolderPath);
+                        return;
+                    }
+
+                    // Créer une map des fichiers dans le nouveau dossier
+                    const fileMap = new Map();
+                    newFolder.children.forEach(file => {
+                        if (file instanceof TFile) {
+                            fileMap.set(file.name, file);
+                            fileMap.set(file.basename, file); // Ajouter aussi sans extension
+                        }
+                    });
+
+                    console.log('📁 Fichiers dans le nouveau dossier:', Array.from(fileMap.keys()));
+
+                    for (const noteFile of files) {
+                        const cache = this.app.metadataCache.getFileCache(noteFile);
+                        const embeds = cache?.embeds || [];
+                        let hasChanges = false;
+                        let content = await this.app.vault.read(noteFile);
+
+                        console.log('🔍 Analyse des embeds dans:', noteFile.path, {
+                            nombreEmbeds: embeds.length,
+                            embeds: embeds.map(e => ({
+                                link: e.link,
+                                path: e.path,
+                                source: e.source,
+                                displayText: e.displayText,
+                                position: e.position
+                            }))
+                        });
+
+                        for (const embed of embeds) {
+                            // Construire le chemin complet pour la comparaison
+                            const embedPath = embed.link;
+                            console.log('📝 Vérification du lien:', {
+                                embedPath,
+                                oldFolderPath,
+                                oldBasename
+                            });
+
+                            // Vérifier si le lien est dans l'ancien dossier (plusieurs cas possibles)
+                            const isInOldFolder = 
+                                // Cas 1: Chemin complet (ex: RSS/ll/tb/image.png)
+                                embedPath.includes(oldFolderPath) || 
+                                embedPath.includes(`/${oldBasename}/`) ||
+                                // Cas 2: Nom de fichier seul, mais le fichier est dans le dossier
+                                fileMap.has(embedPath);
+
+                            if (isInOldFolder) {
+                                console.log('🎯 Lien trouvé dans l\'ancien dossier:', embedPath);
+                                
+                                let targetFile: TFile | null = null;
+
+                                if (fileMap.has(embedPath)) {
+                                    // Cas où on a juste le nom du fichier
+                                    targetFile = fileMap.get(embedPath);
+                                    console.log('📄 Fichier trouvé via nom:', embedPath);
+                                } else {
+                                    // Cas où on a le chemin complet
+                                    const newPath = embedPath.replace(
+                                        new RegExp(`(^|/)${oldBasename}/`),
+                                        `$1${newBasename}/`
+                                    );
+                                    console.log('🔄 Nouveau chemin:', newPath);
+                                    const file = this.app.vault.getAbstractFileByPath(newPath);
+                                    if (file instanceof TFile) {
+                                        targetFile = file;
+                                        console.log('📄 Fichier trouvé via chemin:', newPath);
+                                    }
+                                }
+
+                                if (targetFile) {
+                                    const newLink = this.app.metadataCache.fileToLinktext(targetFile, noteFile.path, true);
+                                    const oldPattern = `![[${embed.link}]]`;
+                                    const newPattern = `![[${newLink}]]`;
+
+                                    console.log('🔄 Remplacement:', {
+                                        ancien: oldPattern,
+                                        nouveau: newPattern,
+                                        contientAncien: content.includes(oldPattern)
+                                    });
+
+                                    if (content.includes(oldPattern)) {
+                                        content = content.replace(oldPattern, newPattern);
+                                        hasChanges = true;
+                                        console.log('✅ Lien mis à jour:', {
+                                            de: embed.link,
+                                            vers: newLink,
+                                            dansLeFichier: noteFile.path
+                                        });
+                                    }
+                                } else {
+                                    console.log('❌ Fichier non trouvé');
+                                }
+                            }
+                        }
+
+                        if (hasChanges) {
+                            await this.app.vault.modify(noteFile, content);
+                            console.log('✅ Fichier mis à jour:', noteFile.path);
+                        }
+                    }
+
+                    showNotice(
+                        getTranslation('notices.folderRenamed')
+                            .replace('{oldName}', oldBasename)
+                            .replace('{newName}', newBasename),
+                        NOTICE_DURATIONS.MEDIUM
+                    );
+                } catch (error) {
+                    console.error('❌ Erreur lors du renommage du dossier:', error);
+                    showNotice(
+                        getTranslation('errors.folderRenameError')
+                            .replace('{error}', error instanceof Error ? error.message : 'Unknown error'),
+                        NOTICE_DURATIONS.ERROR
+                    );
+                }
+            })
+        );
     }
 
     onunload() {
