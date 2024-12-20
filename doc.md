@@ -255,11 +255,11 @@ PicGo :
    ```
 
    Voulez-vous que j'implémente cette solution avec PicGo dans notre service CloudflareMediaService ?
-   ## roadmap
+## roadmap
 
-   ### toolkit
+### toolkit
    
-   ####  obsidian://show-plugin?id=obsidian-image-toolkit
+####  obsidian://show-plugin?id=obsidian-image-toolkit
 
 
 
@@ -596,47 +596,11 @@ Find Orphaned Images is an Obsidian plugin designed to help you keep your vault 
 
    Pour gérer 3 noms de domaine différents de manière économique, voici les meilleures options :
 
-   1. **Achat des domaines** :
-      - Registrars économiques recommandés :
-      - OVH (~5-8€/an par domaine)
-      - Cloudflare Registrar (prix coûtant, souvent ~8-10€/an)
-      - NameCheap (promotions fréquentes)
-      - Éviter GoDaddy (prix de renouvellement élevés)
-
    2. **Configuration CDN** :
       - **Option gratuite** :
       - Utiliser Cloudflare gratuit comme proxy
       - Configurer les CNAME vers Cloudinary/TwicPics
       - Bénéficier du CDN Cloudflare gratuitement
-
-      - **Option payante mais optimale** :
-      - Plan Business Cloudinary (~30-40€/mois)
-      - Inclut les domaines personnalisés
-      - Meilleure optimisation des images
-
-   3. **Structure recommandée** :
-      ```
-      votresite1.com
-      - media.votresite1.com -> CDN
-
-      votresite2.com
-      - media.votresite2.com -> CDN
-
-      votresite3.com
-      - media.votresite3.com -> CDN
-      ```
-
-   Budget annuel minimal :
-   - Domaines : ~30€/an (3 × 10€)
-   - CDN : Gratuit avec Cloudflare + Cloudinary gratuit
-   - Total : ~30€/an pour les 3 sites
-
-   C'est la solution la plus économique tout en gardant une bonne qualité de service.
-
-
-
-
-   Non, je m'excuse, j'ai fait une erreur dans mon estimation. Faisons un calcul plus précis :
 
    1. **Cloudinary** :
       - Version gratuite :
@@ -645,14 +609,7 @@ Find Orphaned Images is an Obsidian plugin designed to help you keep your vault 
       - Version Plus (~45€/mois) :
       - Nécessaire pour les domaines personnalisés
       - ~540€/an
-
-   2. **Domaines** :
-      - 3 domaines × ~10€/an = ~30€/an
-
-   3. **Total réel** :
       - ~570€/an minimum avec Cloudinary
-
-   Alternatives plus économiques :
 
    1. **Solution Cloudflare R2 + Workers** :
       - Stockage R2 : Prix au Go (~0.015$/Go)

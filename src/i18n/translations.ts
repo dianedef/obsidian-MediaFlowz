@@ -198,6 +198,43 @@ const fr = {
     
     'settings.imageOptimization.manual.quality': 'Qualité de compression',
     'settings.imageOptimization.manual.quality.desc': 'Niveau de qualité fixe (100 = aucune compression)',
+
+    // Paramètres Bunny.net
+    'settings.bunny.title': 'Configuration Bunny.net',
+    'settings.bunny.description': 'Bunny.net est un service CDN et de stockage qui offre une excellente performance à bas coût.\n\n' +
+        'Vous pouvez configurer plusieurs zones de stockage pour organiser vos médias par projet.\n' +
+        'Pour chaque zone de stockage, vous devez configurer :\n' +
+        '• Le nom de la zone (Storage Zone Name)\n' +
+        '• La clé d\'accès FTP/API (trouvable dans les paramètres de la zone)\n' +
+        '• L\'URL de la Pull Zone (CDN)\n' +
+        '• Les dossiers Obsidian associés\n\n' +
+        'Vous pouvez trouver ces informations dans votre dashboard Bunny.net :\n' +
+        '1. Allez dans "Storage" > Sélectionnez votre zone\n' +
+        '2. La clé d\'accès est dans "FTP & API Access"\n' +
+        '3. L\'URL CDN est dans l\'onglet "Details" de la Pull Zone associée',
+    'settings.bunny.storageZones': 'Zones de stockage',
+    'settings.bunny.storageZonesDesc': 'Configurez différentes zones de stockage pour vos projets',
+    'settings.bunny.addStorageZone': 'Ajouter une zone de stockage',
+    'settings.bunny.zoneName': 'Nom de la zone',
+    'settings.bunny.zoneNameDesc': 'Le nom de votre zone de stockage (Storage Zone Name)',
+    'settings.bunny.accessKey': 'Clé d\'accès',
+    'settings.bunny.accessKeyDesc': 'La clé d\'accès FTP/API de la zone (trouvable dans FTP & API Access)',
+    'settings.bunny.pullZoneUrl': 'URL du CDN',
+    'settings.bunny.pullZoneUrlDesc': 'L\'URL de la Pull Zone associée (ex: cdn.votredomaine.com)',
+    'settings.bunny.folders': 'Dossiers associés',
+    'settings.bunny.foldersDesc': 'Les dossiers Obsidian qui utiliseront cette zone de stockage',
+    'settings.bunny.addFolder': 'Ajouter un dossier',
+    'settings.bunny.removeFolder': 'Retirer',
+    'settings.bunny.setAsDefault': 'Définir comme zone par défaut',
+    'settings.bunny.removeZone': 'Supprimer cette zone',
+    'settings.bunny.addZone': 'Ajouter',
+    'settings.bunny.customCDNs': 'CDNs personnalisés',
+    'settings.bunny.customCDNsDesc': 'Configurez des URLs CDN différentes pour certains dossiers',
+    'settings.bunny.addCustomCDN': 'Ajouter un CDN personnalisé',
+    'settings.bunny.folderPath': 'Chemin du dossier',
+    'settings.bunny.cdnUrl': 'URL du CDN',
+    'settings.bunny.removeCDN': 'Supprimer ce CDN',
+    'settings.bunny.addCDN': 'Ajouter',
 };
 
 const en = {
@@ -398,6 +435,43 @@ const en = {
     
     'settings.imageOptimization.manual.quality': 'Compression Quality',
     'settings.imageOptimization.manual.quality.desc': 'Fixed quality level (100 = no compression)',
+
+    // Bunny.net settings
+    'settings.bunny.title': 'Bunny.net Configuration',
+    'settings.bunny.description': 'Bunny.net is a CDN and storage service offering excellent performance at low cost.\n\n' +
+        'You can configure multiple storage zones to organize your media by project.\n' +
+        'For each storage zone, you need to configure:\n' +
+        '• The zone name (Storage Zone Name)\n' +
+        '• The FTP/API access key (found in zone settings)\n' +
+        '• The Pull Zone URL (CDN)\n' +
+        '• Associated Obsidian folders\n\n' +
+        'You can find this information in your Bunny.net dashboard:\n' +
+        '1. Go to "Storage" > Select your zone\n' +
+        '2. The access key is in "FTP & API Access"\n' +
+        '3. The CDN URL is in the "Details" tab of the associated Pull Zone',
+    'settings.bunny.storageZones': 'Storage Zones',
+    'settings.bunny.storageZonesDesc': 'Configure different storage zones for your projects',
+    'settings.bunny.addStorageZone': 'Add Storage Zone',
+    'settings.bunny.zoneName': 'Zone Name',
+    'settings.bunny.zoneNameDesc': 'Your storage zone name (Storage Zone Name)',
+    'settings.bunny.accessKey': 'Access Key',
+    'settings.bunny.accessKeyDesc': 'The zone\'s FTP/API access key (found in FTP & API Access)',
+    'settings.bunny.pullZoneUrl': 'CDN URL',
+    'settings.bunny.pullZoneUrlDesc': 'The associated Pull Zone URL (e.g. cdn.yourdomain.com)',
+    'settings.bunny.folders': 'Associated Folders',
+    'settings.bunny.foldersDesc': 'Obsidian folders that will use this storage zone',
+    'settings.bunny.addFolder': 'Add Folder',
+    'settings.bunny.removeFolder': 'Remove',
+    'settings.bunny.setAsDefault': 'Set as default zone',
+    'settings.bunny.removeZone': 'Remove this zone',
+    'settings.bunny.addZone': 'Add',
+    'settings.bunny.customCDNs': 'Custom CDNs',
+    'settings.bunny.customCDNsDesc': 'Configure different CDN URLs for specific folders',
+    'settings.bunny.addCustomCDN': 'Add Custom CDN',
+    'settings.bunny.folderPath': 'Folder Path',
+    'settings.bunny.cdnUrl': 'CDN URL',
+    'settings.bunny.removeCDN': 'Remove this CDN',
+    'settings.bunny.addCDN': 'Add',
 };
 
 export const translations: Translations = { fr, en };

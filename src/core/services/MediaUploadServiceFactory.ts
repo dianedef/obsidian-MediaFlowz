@@ -2,6 +2,7 @@ import { IPluginSettings } from '../types/settings';
 import { CloudflareMediaService } from './CloudflareMediaService';
 import { CloudinaryService } from './CloudinaryService';
 import { TwicPicsService } from './TwicPicsService';
+import { BunnyService } from './BunnyService';
 import { IMediaUploadService } from './interfaces/IMediaUploadService';
 
 export class MediaUploadServiceFactory {
@@ -13,7 +14,8 @@ export class MediaUploadServiceFactory {
             if (
                 (settings.service === 'cloudflare' && this.currentService instanceof CloudflareMediaService) ||
                 (settings.service === 'cloudinary' && this.currentService instanceof CloudinaryService) ||
-                (settings.service === 'twicpics' && this.currentService instanceof TwicPicsService)
+                (settings.service === 'twicpics' && this.currentService instanceof TwicPicsService) ||
+                (settings.service === 'bunny' && this.currentService instanceof BunnyService)
             ) {
                 return this.currentService;
             }
@@ -25,6 +27,8 @@ export class MediaUploadServiceFactory {
                 CloudinaryService.cleanup();
             } else if (this.currentService instanceof TwicPicsService) {
                 TwicPicsService.cleanup();
+            } else if (this.currentService instanceof BunnyService) {
+                BunnyService.cleanup();
             }
         }
 
@@ -38,6 +42,9 @@ export class MediaUploadServiceFactory {
                 break;
             case 'twicpics':
                 this.currentService = TwicPicsService.getInstance();
+                break;
+            case 'bunny':
+                this.currentService = BunnyService.getInstance();
                 break;
             default:
                 throw new Error(`Service non supporté: ${settings.service}`);

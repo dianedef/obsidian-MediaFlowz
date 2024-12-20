@@ -50,12 +50,42 @@ export interface ICloudflareSettings {
 }
 
 /**
+ * Configuration d'une zone de stockage Bunny.net
+ */
+export interface IBunnyStorageZone {
+    /** Nom personnalisé de la zone */
+    name: string;
+    /** Nom de la zone de stockage sur Bunny.net */
+    storageZone: string;
+    /** Clé d'accès FTP/API de la zone de stockage */
+    accessKey: string;
+}
+
+/**
+ * Paramètres Bunny.net
+ * @see {@link https://docs.bunny.net/reference/storage-api}
+ */
+export interface IBunnySettings {
+    /** Zones de stockage configurées */
+    storageZones: IBunnyStorageZone[];
+    /** Zone de stockage par défaut */
+    defaultStorageZone?: string;
+    /** Utiliser les dossiers associés */
+    useFolderMapping: boolean;
+    /** CDNs personnalisés par dossier */
+    customCDNs: {
+        [folder: string]: string;
+    };
+}
+
+/**
  * Type des services supportés
  */
 export enum SupportedService {
     CLOUDINARY = 'cloudinary',
     TWICPICS = 'twicpics',
-    CLOUDFLARE = 'cloudflare'
+    CLOUDFLARE = 'cloudflare',
+    BUNNY = 'bunny'
 }
 
 /**
@@ -71,13 +101,15 @@ export interface IIgnoredFoldersSettings {
  */
 export interface IPluginSettings {
     /** Service actif */
-    service: 'cloudflare' | 'cloudinary' | 'twicpics';
+    service: 'cloudflare' | 'cloudinary' | 'twicpics' | 'bunny';
     /** Configuration Cloudinary */
     cloudinary?: ICloudinarySettings;
     /** Configuration TwicPics */
     twicpics?: ITwicPicsSettings;
     /** Configuration Cloudflare */
     cloudflare?: ICloudflareSettings;
+    /** Configuration Bunny.net */
+    bunny?: IBunnySettings;
     /** Liste des dossiers à ignorer */
     ignoredFolders: string[];
     /** Paramètres des dossiers ignorés */
@@ -190,5 +222,11 @@ export const DEFAULT_SETTINGS: IPluginSettings = {
         manualMode: {
             quality: 85
         }
+    },
+    bunny: {
+        storageZones: [],
+        defaultStorageZone: '',
+        useFolderMapping: true,
+        customCDNs: {}
     }
 }; 

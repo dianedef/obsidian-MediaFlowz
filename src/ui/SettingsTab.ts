@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Menu, TFolder } from 'obsidian';
+import { App, PluginSettingTab, Setting, Menu, TFolder, Modal, TextComponent, ButtonComponent } from 'obsidian';
 import MediaFlowzPlugin from '../main';
 import { getTranslation } from '../i18n/translations';
 import { SupportedService } from '../core/types/settings';
@@ -408,6 +408,7 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                 dropdown.addOption('cloudinary', 'Cloudinary');
                 dropdown.addOption('twicpics', 'TwicPics');
                 dropdown.addOption('cloudflare', 'Cloudflare');
+                dropdown.addOption('bunny', 'Bunny.net');
                 
                 // Définir la valeur actuelle
                 dropdown.setValue(this.plugin.settings.service || '');
@@ -420,7 +421,8 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                             service: undefined,
                             cloudinary: undefined,
                             twicpics: undefined,
-                            cloudflare: undefined
+                            cloudflare: undefined,
+                            bunny: undefined
                         });
                         this.display();
                         return;
@@ -482,6 +484,9 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                 case SupportedService.CLOUDFLARE:
                     this.displayCloudflareSettings(serviceSettingsSection);
                     break;
+                case SupportedService.BUNNY:
+                    this.displayBunnySettings(serviceSettingsSection);
+                    break;
             }
         }
 
@@ -528,13 +533,18 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
             .addButton(button => button
                 .setButtonText(getTranslation('settings.ignoredFolders.select'))
                 .onClick((e: MouseEvent) => {
-                    // Créer le menu de sélection principal
                     const menu = new Menu();
                     
-                    // Construire la hiérarchie des dossiers à partir de la racine
-                    this.buildFolderMenu(menu, this.app.vault.getRoot());
+                    this.buildFolderMenu(menu, this.app.vault.getRoot(), async (folder: TFolder) => {
+                        if (!this.plugin.settings.ignoredFolders.includes(folder.path)) {
+                            const newIgnoredFolders = [...this.plugin.settings.ignoredFolders, folder.path];
+                            await this.updateSettings({
+                                ignoredFolders: newIgnoredFolders
+                            });
+                            this.display();
+                        }
+                    });
 
-                    // Afficher le menu à la position du clic
                     menu.showAtMouseEvent(e);
                 }));
     }
@@ -752,50 +762,204 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                 }));
     }
 
-    // Récupérer tous les dossiers du vault de manière hiérarchique
-    private getAllFolders(): { [key: string]: TFolder } {
-        const folderMap: { [key: string]: TFolder } = {};
-        const vault = this.app.vault;
-        
-        // Fonction récursive pour parcourir les dossiers
-        const traverse = (folder: TFolder) => {
-            const path = folder.path;
-            if (path !== '/') {
-                folderMap[path] = folder;
-            }
-            
-            folder.children
-                .filter((child): child is TFolder => child instanceof TFolder)
-                .forEach(traverse);
-        };
+    private displayBunnySettings(containerEl: HTMLElement): void {
+        const titleKey = 'settings.bunny.title';
+        const descKey = 'settings.bunny.description';
 
-        // Commencer la traversée depuis la racine
-        traverse(vault.getRoot());
-        return folderMap;
+        containerEl.createEl('h3', { text: getTranslation(titleKey) });
+        containerEl.createEl('p', { 
+            text: getTranslation(descKey),
+            cls: 'setting-item-description'
+        });
+
+        // Section des zones de stockage
+        const storageZonesSection = containerEl.createDiv('storage-zones-section');
+        storageZonesSection.createEl('h4', { text: getTranslation('settings.bunny.storageZones') });
+        storageZonesSection.createEl('p', { 
+            text: getTranslation('settings.bunny.storageZonesDesc'),
+            cls: 'setting-item-description'
+        });
+
+        // Liste des zones de stockage actuelles
+        const storageZones = this.plugin.settings.bunny?.storageZones || [];
+        storageZones.forEach((zone, index) => {
+            const zoneEl = storageZonesSection.createDiv('storage-zone-item');
+            
+            new Setting(zoneEl)
+                .setName(zone.name)
+                .setDesc(zone.storageZone)
+                .addExtraButton(button => button
+                    .setIcon(this.plugin.settings.bunny?.defaultStorageZone === zone.name ? 'star' : 'star-off')
+                    .setTooltip(getTranslation('settings.bunny.setAsDefault'))
+                    .onClick(async () => {
+                        await this.updateSettings({
+                            bunny: {
+                                ...this.plugin.settings.bunny,
+                                defaultStorageZone: zone.name
+                            }
+                        });
+                        this.display();
+                    }))
+                .addExtraButton(button => button
+                    .setIcon('trash')
+                    .setTooltip(getTranslation('settings.bunny.removeZone'))
+                    .onClick(async () => {
+                        const newZones = [...storageZones];
+                        newZones.splice(index, 1);
+                        await this.updateSettings({
+                            bunny: {
+                                ...this.plugin.settings.bunny,
+                                storageZones: newZones,
+                                defaultStorageZone: this.plugin.settings.bunny?.defaultStorageZone === zone.name 
+                                    ? (newZones[0]?.name || '') 
+                                    : this.plugin.settings.bunny?.defaultStorageZone
+                            }
+                        });
+                        this.display();
+                    }));
+        });
+
+        // Bouton pour ajouter une nouvelle zone de stockage
+        new Setting(storageZonesSection)
+            .setName(getTranslation('settings.bunny.addStorageZone'))
+            .addButton(button => button
+                .setButtonText('+')
+                .onClick(() => {
+                    const modal = new Modal(this.app);
+                    modal.titleEl.setText(getTranslation('settings.bunny.addStorageZone'));
+                    
+                    const nameInput = new TextComponent(modal.contentEl)
+                        .setPlaceholder(getTranslation('settings.bunny.zoneName'));
+                    
+                    const storageZoneInput = new TextComponent(modal.contentEl)
+                        .setPlaceholder(getTranslation('settings.bunny.storageZoneName'));
+                        
+                    const accessKeyInput = new TextComponent(modal.contentEl)
+                        .setPlaceholder(getTranslation('settings.bunny.accessKey'));
+                        
+                    new ButtonComponent(modal.contentEl)
+                        .setButtonText(getTranslation('settings.bunny.addZone'))
+                        .onClick(async () => {
+                            const name = nameInput.getValue();
+                            const storageZone = storageZoneInput.getValue();
+                            const accessKey = accessKeyInput.getValue();
+                            
+                            if (name && storageZone && accessKey) {
+                                const newZone = {
+                                    name,
+                                    storageZone,
+                                    accessKey
+                                };
+                                
+                                const newZones = [...(this.plugin.settings.bunny?.storageZones || []), newZone];
+                                await this.updateSettings({
+                                    bunny: {
+                                        ...this.plugin.settings.bunny,
+                                        storageZones: newZones,
+                                        defaultStorageZone: newZones.length === 1 ? name : this.plugin.settings.bunny?.defaultStorageZone
+                                    }
+                                });
+                                modal.close();
+                                this.display();
+                            }
+                        });
+                    
+                    modal.open();
+                }));
+
+        // Section des CDNs personnalisés
+        const cdnSection = containerEl.createDiv('cdn-section');
+        cdnSection.createEl('h4', { text: getTranslation('settings.bunny.customCDNs') });
+        cdnSection.createEl('p', { 
+            text: getTranslation('settings.bunny.customCDNsDesc'),
+            cls: 'setting-item-description'
+        });
+
+        // Liste des CDNs personnalisés actuels
+        const customCDNs = this.plugin.settings.bunny?.customCDNs || {};
+        Object.entries(customCDNs).forEach(([folder, cdnUrl]) => {
+            const cdnEl = cdnSection.createEl('div', { cls: 'cdn-item' });
+            
+            new Setting(cdnEl)
+                .setName(folder)
+                .setDesc(cdnUrl)
+                .addExtraButton(button => button
+                    .setIcon('trash')
+                    .setTooltip(getTranslation('settings.bunny.removeCDN'))
+                    .onClick(async () => {
+                        const newCustomCDNs = { ...customCDNs };
+                        delete newCustomCDNs[folder];
+                        await this.updateSettings({
+                            bunny: {
+                                ...this.plugin.settings.bunny,
+                                customCDNs: newCustomCDNs
+                            }
+                        });
+                        this.display();
+                    }));
+        });
+
+        // Bouton pour ajouter un nouveau CDN personnalisé
+        new Setting(cdnSection)
+            .setName(getTranslation('settings.bunny.addCustomCDN'))
+            .addButton(button => button
+                .setButtonText('+')
+                .onClick((e: MouseEvent) => {
+                    const menu = new Menu();
+                    
+                    // Utiliser buildFolderMenu avec un callback pour les CDNs
+                    this.buildFolderMenu(menu, this.app.vault.getRoot(), (folder: TFolder) => {
+                        const modal = new Modal(this.app);
+                        modal.titleEl.setText(getTranslation('settings.bunny.addCustomCDN'));
+                        
+                        const cdnInput = new TextComponent(modal.contentEl)
+                            .setPlaceholder(getTranslation('settings.bunny.cdnUrl'));
+                        
+                        new ButtonComponent(modal.contentEl)
+                            .setButtonText(getTranslation('settings.bunny.addCDN'))
+                            .onClick(async () => {
+                                const cdn = cdnInput.getValue();
+                                if (cdn) {
+                                    const newCustomCDNs = {
+                                        ...this.plugin.settings.bunny?.customCDNs,
+                                        [folder.path]: cdn
+                                    };
+                                    await this.updateSettings({
+                                        bunny: {
+                                            ...this.plugin.settings.bunny,
+                                            customCDNs: newCustomCDNs
+                                        }
+                                    });
+                                    modal.close();
+                                    this.display();
+                                }
+                            });
+                        
+                        modal.open();
+                    });
+
+                    menu.showAtMouseEvent(e);
+                }));
     }
 
-    // Construire le menu hiérarchique des dossiers
-    private buildFolderMenu(menu: Menu, folder: TFolder, level: number = 0) {
+    private buildFolderMenu(menu: Menu, folder: TFolder, onFolderSelect: (folder: TFolder) => void, level: number = 0) {
         const subFolders = folder.children.filter((child): child is TFolder => child instanceof TFolder);
         
         subFolders.forEach(subFolder => {
             const hasChildren = subFolder.children.some(child => child instanceof TFolder);
             
             if (hasChildren) {
-                // Pour les dossiers avec des enfants, créer un sous-menu
                 menu.addItem(item => {
                     const titleEl = createSpan({ cls: 'menu-item-title' });
                     titleEl.appendText(subFolder.name);
                     titleEl.appendChild(createSpan({ cls: 'menu-item-arrow', text: ' →' }));
 
-                    item.dom.querySelector('.menu-item-title')?.replaceWith(titleEl);
+                    (item as any).dom.querySelector('.menu-item-title')?.replaceWith(titleEl);
                     item.setIcon('folder');
 
-                    // Créer le sous-menu
                     const subMenu = new Menu();
-                    this.buildFolderMenu(subMenu, subFolder, level + 1);
+                    this.buildFolderMenu(subMenu, subFolder, onFolderSelect, level + 1);
 
-                    // Configurer l'événement de survol
                     const itemDom = (item as any).dom as HTMLElement;
                     if (itemDom) {
                         let isOverItem = false;
@@ -829,7 +993,6 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                             hideSubMenu();
                         });
 
-                        // Gérer le survol du sous-menu lui-même
                         const subMenuEl = (subMenu as any).dom;
                         if (subMenuEl) {
                             subMenuEl.addEventListener('mouseenter', () => {
@@ -844,33 +1007,112 @@ export class MediaFlowzSettingsTab extends PluginSettingTab {
                         }
                     }
 
-                    // Ajouter également un gestionnaire de clic pour le dossier parent
-                    item.onClick(async () => {
-                        if (!this.plugin.settings.ignoredFolders.includes(subFolder.path)) {
-                            const newIgnoredFolders = [...this.plugin.settings.ignoredFolders, subFolder.path];
-                            await this.updateSettings({
-                                ignoredFolders: newIgnoredFolders
-                            });
-                            this.display();
-                        }
-                    });
+                    item.onClick(() => onFolderSelect(subFolder));
                 });
             } else {
-                // Pour les dossiers sans enfants, ajouter simplement un élément de menu
                 menu.addItem(item => {
                     item.setTitle(subFolder.name)
                         .setIcon('folder')
-                        .onClick(async () => {
-                            if (!this.plugin.settings.ignoredFolders.includes(subFolder.path)) {
-                                const newIgnoredFolders = [...this.plugin.settings.ignoredFolders, subFolder.path];
-                                await this.updateSettings({
-                                    ignoredFolders: newIgnoredFolders
-                                });
-                                this.display();
-                            }
-                        });
+                        .onClick(() => onFolderSelect(subFolder));
                 });
             }
         });
+    }
+
+    // Récupérer tous les dossiers du vault de manière hiérarchique
+    private getAllFolders(): { [key: string]: TFolder } {
+        const folderMap: { [key: string]: TFolder } = {};
+        const vault = this.app.vault;
+        
+        // Fonction récursive pour parcourir les dossiers
+        const traverse = (folder: TFolder) => {
+            const path = folder.path;
+            if (path !== '/') {
+                folderMap[path] = folder;
+            }
+            
+            folder.children
+                .filter((child): child is TFolder => child instanceof TFolder)
+                .forEach(traverse);
+        };
+
+        // Commencer la traversée depuis la racine
+        traverse(vault.getRoot());
+        return folderMap;
+    }
+}
+
+class FolderSelectionModal extends Modal {
+    private onSubmit: (folder: string) => void;
+    private folderInput: TextComponent;
+
+    constructor(app: App, onSubmit: (folder: string) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+
+        contentEl.createEl('h3', { text: getTranslation('settings.bunny.addFolder') });
+
+        this.folderInput = new TextComponent(contentEl)
+            .setPlaceholder(getTranslation('settings.bunny.folderPath'));
+
+        new ButtonComponent(contentEl)
+            .setButtonText(getTranslation('settings.bunny.addZone'))
+            .onClick(() => {
+                const folder = this.folderInput.getValue();
+                if (folder) {
+                    this.onSubmit(folder);
+                    this.close();
+                }
+            });
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+    }
+}
+
+class CustomCDNModal extends Modal {
+    private onSubmit: (folder: string, cdn: string) => void;
+    private folderInput: TextComponent;
+    private cdnInput: TextComponent;
+
+    constructor(app: App, onSubmit: (folder: string, cdn: string) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+
+        contentEl.createEl('h3', { text: getTranslation('settings.bunny.addCustomCDN') });
+
+        this.folderInput = new TextComponent(contentEl)
+            .setPlaceholder(getTranslation('settings.bunny.folderPath'));
+
+        this.cdnInput = new TextComponent(contentEl)
+            .setPlaceholder(getTranslation('settings.bunny.cdnUrl'));
+
+        new ButtonComponent(contentEl)
+            .setButtonText(getTranslation('settings.bunny.addZone'))
+            .onClick(() => {
+                const folder = this.folderInput.getValue();
+                const cdn = this.cdnInput.getValue();
+                if (folder && cdn) {
+                    this.onSubmit(folder, cdn);
+                    this.close();
+                }
+            });
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
     }
 } 
