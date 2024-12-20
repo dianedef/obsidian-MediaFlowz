@@ -52,15 +52,26 @@ const fr = {
         '• Uploader l\'image vers votre compte Cloudflare\n' +
         '• Insérer le lien de l\'image optimisée dans votre note\n' +
         '• Servir l\'image via le CDN de Cloudflare\n\n' +
-        'Vos images sont automatiquement optimisées et protégées par le réseau Cloudflare.',
+        'Vos images sont automatiquement optimisées et protégées par le réseau Cloudflare.\n\n' +
+        'Note : Cloudflare Images n\'utilise pas de buckets comme S3. Pour organiser vos images par projet :\n' +
+        '• Utilisez des variants différents (ex: obsidian/blog, obsidian/docs)\n' +
+        '• Ou configurez des domaines personnalisés différents par projet\n\n' +
+        'Note sur R2 : R2 est le service de stockage objet de Cloudflare, compatible S3. Il n\'a pas d\'interface graphique dédiée, mais vous pouvez :\n' +
+        '• Utiliser le dashboard Cloudflare (interface basique)\n' +
+        '• Utiliser des outils compatibles S3 (comme Cyberduck, S3 Browser)\n' +
+        '• Accéder via l\'API R2 ou S3',
     'settings.cloudflare.accountId': 'Account ID',
     'settings.cloudflare.accountIdDesc': 'Votre identifiant de compte Cloudflare (visible dans l\'URL du dashboard)',
     'settings.cloudflare.deliveryHash': 'Hash de livraison',
     'settings.cloudflare.deliveryHashDesc': 'Le hash utilisé dans les URLs de vos images (format: imagedelivery.net/[hash]/image/variant)',
+    'settings.cloudflare.variantPrefix': 'Préfixe des variants',
+    'settings.cloudflare.variantPrefixDesc': 'Préfixe ajouté à tous les variants pour ce projet (ex: obsidian/). Permet d\'organiser les images par projet.',
+    'settings.cloudflare.defaultVariant': 'Variant par défaut',
+    'settings.cloudflare.defaultVariantDesc': 'Le variant Cloudflare à utiliser par défaut (ex: public). Le préfixe sera automatiquement ajouté.',
     'settings.cloudflare.token': 'Token API',
     'settings.cloudflare.tokenDesc': 'Token API avec les permissions Images et Stream',
-    'settings.cloudflare.customDomain': 'Custom Domain',
-    'settings.cloudflare.customDomainDesc': 'Custom domain to serve your media (optional).',
+    'settings.cloudflare.customDomain': 'Domaine personnalisé',
+    'settings.cloudflare.customDomainDesc': 'Votre domaine personnalisé pour servir les images (ex: images.votresite.com). Note : Cloudflare Images ne permet qu\'un seul domaine personnalisé par compte.',
     'settings.cloudflare.bucketName': 'R2 Bucket Name',
     'settings.cloudflare.bucketNameDesc': 'Your Cloudflare R2 bucket name.',
     'settings.cloudflare.r2AccessKeyId': 'R2 Access Key',
@@ -238,18 +249,29 @@ const en = {
         '• Upload the image to your Cloudflare account\n' +
         '• Insert the optimized image link in your note\n' +
         '• Serve the image through Cloudflare\'s CDN\n\n' +
-        'Your images are automatically optimized and protected by the Cloudflare network.',
+        'Your images are automatically optimized and protected by the Cloudflare network.\n\n' +
+        'Note: Cloudflare Images doesn\'t use buckets like S3. To organize your images by project:\n' +
+        '• Use different variants (e.g. obsidian/blog, obsidian/docs)\n' +
+        '• Or configure different custom domains per project\n\n' +
+        'Note about R2: R2 is Cloudflare\'s object storage service, S3-compatible. It doesn\'t have a dedicated GUI, but you can:\n' +
+        '• Use the Cloudflare dashboard (basic interface)\n' +
+        '• Use S3-compatible tools (like Cyberduck, S3 Browser)\n' +
+        '• Access via R2 or S3 API',
     'settings.cloudflare.accountId': 'Account ID',
     'settings.cloudflare.accountIdDesc': 'Your Cloudflare account identifier.',
     'settings.cloudflare.deliveryHash': 'Delivery Hash',
-    'settings.cloudflare.deliveryHashDesc': 'The hash used in the URLs of your images (format: imagedelivery.net/[hash]/image/variant)',
+    'settings.cloudflare.deliveryHashDesc': 'The hash used in your image URLs (format: imagedelivery.net/[hash]/image/variant)',
+    'settings.cloudflare.variantPrefix': 'Variant Prefix',
+    'settings.cloudflare.variantPrefixDesc': 'Prefix added to all variants for this project (e.g. obsidian/). Helps organize images by project.',
+    'settings.cloudflare.defaultVariant': 'Default Variant',
+    'settings.cloudflare.defaultVariantDesc': 'The Cloudflare variant to use by default (e.g. public). The prefix will be automatically added.',
     'settings.cloudflare.token': 'API Token',
     'settings.cloudflare.tokenDesc': 'Token created in Cloudflare Dashboard: ' +
             'Go to dash.cloudflare.com > Click on the top right menu > ' +
             'My Profile > API Tokens > Create Token > ' +
             'Use the "Cloudflare Images & Stream" template with read and write permissions',
     'settings.cloudflare.customDomain': 'Custom Domain',
-    'settings.cloudflare.customDomainDesc': 'Custom domain to serve your media (optional).',
+    'settings.cloudflare.customDomainDesc': 'Your custom domain to serve images (e.g. images.yoursite.com). Note: Cloudflare Images only allows one custom domain per account.',
     'settings.cloudflare.bucketName': 'R2 Bucket Name',
     'settings.cloudflare.bucketNameDesc': 'Your Cloudflare R2 bucket name.',
     'settings.cloudflare.r2AccessKeyId': 'R2 Access Key',
