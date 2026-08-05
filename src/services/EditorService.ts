@@ -15,9 +15,9 @@ export class EditorService {
     private eventBus: EventBusService;
     private app: App;
 
-    private constructor() {
+    private constructor(app: App) {
         this.eventBus = EventBusService.getInstance();
-        this.app = (window as any).app;
+        this.app = app;
     }
 
     /**
@@ -26,9 +26,9 @@ export class EditorService {
      * 
      * @returns {EditorService} L'instance unique du service
      */
-    static getInstance(): EditorService {
+    static getInstance(app: App): EditorService {
         if (!EditorService.instance) {
-            EditorService.instance = new EditorService();
+            EditorService.instance = new EditorService(app);
         }
         return EditorService.instance;
     }

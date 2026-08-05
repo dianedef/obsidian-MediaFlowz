@@ -2,13 +2,15 @@ import { Plugin, WorkspaceLeaf, Modal, Component } from 'obsidian';
 import { TViewMode } from '../types';
 import { SettingsService } from './SettingsService';
 import { DashboardView } from './Dashboard';
-import type { App } from 'vue';
+import { createApp, type App } from 'vue';
+import Dashboard from '../components/Dashboard.vue';
 import { Translations } from './Translations';
 
 export class ViewMode extends Component {
    private currentView: DashboardView | App | null = null;
    private currentMode: TViewMode | null = null;
    private activeLeaf: WorkspaceLeaf | null = null;
+   private activeModal: Modal | null = null;
    private leafId: string | null = null;
    private translations: Translations;
    private settingsService: SettingsService;
@@ -20,13 +22,16 @@ export class ViewMode extends Component {
       // Initialiser les modes depuis les settings
       const settings = this.settingsService.getSettings();
       this.currentMode = settings.currentMode;
-      // Nettoyer les anciennes leafs au démarrage
-      this.closeCurrentView();
    }
 
    private async closeCurrentView() {
       // Fermer la vue actuelle si elle existe
       if (this.currentView) {
+         if (this.activeModal) {
+            this.activeModal.close();
+            this.activeModal = null;
+         }
+
          // Si c'est une leaf, la détacher
          if (this.activeLeaf) {
             this.activeLeaf.detach();
@@ -66,7 +71,17 @@ export class ViewMode extends Component {
          // Créer le conteneur pour le dashboard dans la modale
          const contentEl = modal.contentEl.createDiv('pluginflowz-content');
 
+         const vueApp = createApp(Dashboard, { plugin: this.plugin });
+         vueApp.mount(contentEl);
+         modal.onClose = () => {
+            vueApp.unmount();
+            if (this.activeModal === modal) {
+               this.activeModal = null;
+               this.currentView = null;
+            }
+         };
          this.currentView = vueApp;
+         this.activeModal = modal;
          this.activeLeaf = null;
          modal.open();
       } else {

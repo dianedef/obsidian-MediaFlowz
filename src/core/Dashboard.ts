@@ -1,5 +1,6 @@
 import { ItemView, Plugin, WorkspaceLeaf } from 'obsidian';
 import { createApp, type App, type ComponentPublicInstance } from 'vue';
+import Dashboard from '../components/Dashboard.vue';
 
 interface DashboardInstance extends ComponentPublicInstance {
     refresh?: () => Promise<void>;
@@ -53,4 +54,3 @@ export class DashboardView extends ItemView {
         }
     }
 }
-

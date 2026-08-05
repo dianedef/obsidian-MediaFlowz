@@ -31,7 +31,7 @@ export default class MediaFlowzPlugin extends Plugin {
     private fileNameService!: FileNameService;
     private mediaUploadService!: IMediaUploadService;
     private viewMode!: ViewMode;
-    private originalContents: Map<string, string> = new Map();
+    private originalContents: Map<string, { original: string; transformed: string }> = new Map();
     private uploadLock = new Set<string>();
     private processingLock = {
         paste: false,
@@ -47,7 +47,7 @@ export default class MediaFlowzPlugin extends Plugin {
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.eventBus = EventBusService.getInstance();
-        this.editorService = EditorService.getInstance();
+        this.editorService = EditorService.getInstance(this.app);
         this.fileNameService = FileNameService.getInstance(this.app);
         this.viewMode = new ViewMode(this);
         MediaServiceFactory.initialize(this.app);
@@ -55,7 +55,7 @@ export default class MediaFlowzPlugin extends Plugin {
 
     async onload() {
         this.eventBus = EventBusService.getInstance();
-        this.editorService = EditorService.getInstance();
+        this.editorService = EditorService.getInstance(this.app);
         this.fileNameService = FileNameService.getInstance(this.app);
         
         await this.loadSettings();
@@ -196,11 +196,6 @@ export default class MediaFlowzPlugin extends Plugin {
                 try {
                     const content = await this.app.vault.read(file);
                     
-                    // Sauvegarder le contenu original
-                    if (!this.originalContents.has(file.path)) {
-                        this.originalContents.set(file.path, content);
-                    }
-
                     // Transformer les liens d'images en supprimant le !
                     const newContent = content.replace(
                         /(!?\[\[([^\]]+\.(jpg|jpeg|png|gif|svg|webp)[^\]]*)\]\])|(!?\[([^\]]*)\]\(([^)]+\.(jpg|jpeg|png|gif|svg|webp)[^)]*)\))/gi,
@@ -213,6 +208,10 @@ export default class MediaFlowzPlugin extends Plugin {
                     );
 
                     if (content !== newContent) {
+                        this.originalContents.set(file.path, {
+                            original: content,
+                            transformed: newContent
+                        });
                         view.editor.setValue(newContent);
                     }
                 } catch (error) {
@@ -538,19 +537,15 @@ export default class MediaFlowzPlugin extends Plugin {
 
     onunload() {
         // Restaurer le ! devant les liens d'images pour tous les fichiers modifiés
-        for (const [filePath, _] of this.originalContents) {
+        for (const [filePath, versions] of this.originalContents) {
             const file = this.app.vault.getAbstractFileByPath(filePath);
             if (file instanceof TFile) {
                 this.app.vault.read(file).then(content => {
-                    const newContent = content.replace(
-                        /(\[\[([^\]]+\.(jpg|jpeg|png|gif|svg|webp)[^\]]*)\]\])|(\[([^\]]*)\]\(([^)]+\.(jpg|jpeg|png|gif|svg|webp)[^)]*)\))/gi,
-                        (match: string) => !match.startsWith('!') ? '!' + match : match
-                    );
-                    
-                    if (content !== newContent) {
-                        this.app.vault.modify(file, newContent);
+                    // Ne restaurer que si aucune modification n'a été faite depuis la transformation.
+                    if (content === versions.transformed) {
+                        void this.app.vault.modify(file, versions.original);
                     }
-                });
+                }).catch(() => undefined);
             }
         }
 

@@ -38,7 +38,7 @@ export class MediaServiceFactory {
         };
 
         if (!isServiceConfigured()) {
-            if (settings.service in SupportedService) {
+            if (Object.values(SupportedService).includes(settings.service as SupportedService)) {
                 console.warn(`⚠️ Configuration ${settings.service} incomplète, utilisation du service local`);
             } else {
                 console.warn(`⚠️ Service non reconnu (${settings.service}), utilisation du service local`);
