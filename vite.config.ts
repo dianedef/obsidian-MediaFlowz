@@ -38,7 +38,12 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: parseInt(process.env.PORT) || 3000
+    },
+    port: parseInt(process.env.PORT) || 3000,
     open: false,
     watch: {
       ignored: ['!**/node_modules/@codemirror/**']
